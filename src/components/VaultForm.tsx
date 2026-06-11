@@ -71,33 +71,19 @@ export default function VaultForm({ prices, onAddTransaction }: VaultFormProps) 
       </h3>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Gold Type selection */}
+        {/* Gold Type selection (Locked to Kim Gia Bảo 24K) */}
         <div>
           <label className="block text-[11px] font-bold text-amber-900/70 uppercase tracking-wider mb-1.5">
-            Loại vàng tích lũy
+            Sản phẩm tích lũy
           </label>
-          <div className="grid grid-cols-2 gap-2">
-            {(Object.keys(prices) as GoldTypeCode[]).filter(key => key !== "sjc").map((key) => {
-              const item = prices[key];
-              const isSelected = type === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setType(key)}
-                  className={`py-2 px-1 text-center rounded-xl text-xs font-semibold border transition-all ${
-                    isSelected
-                      ? "bg-amber-400 border-amber-400 text-amber-950 shadow-sm font-bold"
-                      : "bg-white border-amber-200/50 text-amber-900/60 hover:bg-amber-100/30"
-                  }`}
-                >
-                  <div className="font-bold">{item.code}</div>
-                  <div className="text-[9px] opacity-75 mt-0.5 font-normal truncate">
-                    {item.name.replace("Vàng ", "")}
-                  </div>
-                </button>
-              );
-            })}
+          <div className="bg-amber-100/40 border border-amber-200/60 rounded-xl p-3 flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-amber-950">Nhẫn trơn Kim Gia Bảo 24K</div>
+              <div className="text-[10px] text-amber-800/80 font-mono mt-0.5">{prices.doji.code}</div>
+            </div>
+            <span className="text-xs bg-amber-200/60 text-amber-900 font-bold px-2.5 py-1 rounded-lg">
+              Đang theo dõi ✨
+            </span>
           </div>
         </div>
 

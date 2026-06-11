@@ -58,23 +58,13 @@ export default function GoldVaultList({
               id={`vault-transaction-${tx.id}`}
             >
               {/* Gold card type stripe */}
-              <div className={`absolute top-0 left-0 w-1.5 h-full ${
-                tx.type === "sjc" 
-                  ? "bg-amber-500" 
-                  : tx.type === "doji" 
-                    ? "bg-orange-400" 
-                    : "bg-yellow-400"
-              }`} />
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-orange-400" />
 
               <div className="flex justify-between items-start">
                 <div className="pl-1">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-bold text-slate-800 uppercase">
-                      {tx.type === "sjc" 
-                        ? "🪙 Vàng SJC" 
-                        : tx.type === "doji" 
-                          ? "💍 DOJI Nhẫn 9999" 
-                          : "✨ PNJ Nhẫn 24K"}
+                      💍 Nhẫn trơn Kim Gia Bảo 24K
                     </span>
                     <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-mono font-bold">
                       {tx.quantity} {tx.unit === "chi" ? "chỉ" : "lượng"}

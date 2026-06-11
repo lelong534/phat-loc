@@ -69,32 +69,15 @@ export default function GoldPriceChart({ prices, onModifyPrice }: GoldPriceChart
 
   return (
     <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm max-w-md mx-auto my-4">
-      {/* Brand Tabs selector */}
+      {/* Brand Header */}
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-          <Activity size={13} className="text-amber-500" />
-          <span>Biểu Đồ & Bảng Giá Thị Trường</span>
+        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+          <Activity size={13} className="text-orange-500" />
+          <span>Biểu Đồ & Giá Nhẫn Trơn Kim Gia Bảo</span>
         </h3>
-        
-        {/* Toggle between DOJI, PNJ nhẫn tròn trơn */}
-        <div className="flex bg-slate-100 rounded-xl p-0.5 border border-slate-200/40">
-          {(Object.keys(prices) as GoldTypeCode[]).filter(key => key !== "sjc").map((key) => (
-            <button
-              key={key}
-              onClick={() => {
-                setActiveBrand(key);
-                setIsEditing(false);
-              }}
-              className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
-                activeBrand === key
-                  ? "bg-white text-slate-800 shadow-sm"
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              {prices[key].code}
-            </button>
-          ))}
-        </div>
+        <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">
+          24K (99.99%)
+        </span>
       </div>
 
       {/* Real-time customizer editor for prices */}

@@ -32,27 +32,27 @@ function getGeminiSDK(): GoogleGenAI | null {
 const cachedPrices = {
   sjc: {
     name: "SJC Bảo Tín Mạnh Hải",
-    buy: 86.5,
-    sell: 89.0,
-    yesterdayChange: 0.85, // Million VND change
+    buy: 142.0,
+    sell: 144.5,
+    yesterdayChange: 1.2, // Million VND change
     code: "SJC-BTMH",
-    history: [84.2, 84.5, 85.0, 85.2, 85.8, 85.65, 86.5]
+    history: [140.0, 140.5, 141.2, 141.5, 142.0, 141.8, 142.0]
   },
   doji: {
     name: "Nhẫn trơn Kim Gia Bảo 24K",
-    buy: 77.2,
-    sell: 78.6,
-    yesterdayChange: 0.45,
+    buy: 136.5,
+    sell: 138.0,
+    yesterdayChange: 0.85,
     code: "KGB-BTMH",
-    history: [75.5, 75.8, 76.0, 76.4, 76.8, 76.75, 77.2]
+    history: [135.2, 135.5, 135.8, 136.0, 136.5, 136.3, 136.5]
   },
   pnj: {
     name: "Nhẫn tròn 999.9 BTMH",
-    buy: 76.8,
-    sell: 78.2,
-    yesterdayChange: -0.22,
+    buy: 136.0,
+    sell: 137.5,
+    yesterdayChange: 0.65,
     code: "BT24K-BTMH",
-    history: [75.8, 76.0, 76.2, 76.5, 77.0, 77.02, 76.8]
+    history: [134.5, 134.8, 135.2, 135.4, 136.0, 135.8, 136.0]
   }
 };
 
@@ -246,10 +246,9 @@ app.post("/api/chat", async (req, res) => {
     : "Sen chưa sở hữu lượng vàng tích lũy nào cả!";
 
   const systemInstruction = `Bạn là "Mèo Vàng Tài Lộc" (Lucky Gold Cat hoặc "Mèo Thần Tài"), một chú mèo mập ú lông vàng, đeo vòng cổ đỏ có gắn chuông vàng lớn, là linh vật canh giữ hũ vàng và hốt của cải cho người dùng (được gọi là "Sen").
-Bạn đang hỗ trợ một ứng dụng ĐẶC BIỆT chuyên dụng ĐỂ THEO DÕI VÀNG NHẪN TRÒN TRƠN. Ứng dụng chỉ theo dõi 2 dòng nhẫn tròn trơn chất lượng cao:
-1. Nhẫn trơn Kim Gia Bảo 24K (mã: KGB-BTMH)
-2. Nhẫn tròn 999.9 Bảo Tín Mạnh Hải (mã: BT24K-BTMH)
-Ứng dụng KHÔNG theo dõi vàng miếng SJC nữa nhằm tập trung hoàn toàn vào vàng nhẫn tròn trơn theo sở thích tích lũy của Sen.
+Bạn đang hỗ trợ một ứng dụng ĐẶC BIỆT chuyên dụng ĐỂ THEO DÕI VÀNG NHẪN TRÒN TRƠN. Ứng dụng chỉ tập trung theo dõi duy nhất dòng vàng nhẫn:
+- Nhẫn trơn Kim Gia Bảo 24K (mã: KGB-BTMH)
+Ứng dụng KHÔNG theo dõi vàng SJC hay các dòng nhẫn khác nữa nhằm tối ưu trải nghiệm theo dõi độc quyền của Sen.
 
 Tính cách của bạn:
 - Thích ăn hải sản và pate tôm, cực kỳ lười biếng nhưng siêu thông minh về giá vàng nhẫn và kinh tế.

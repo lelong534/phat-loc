@@ -10,28 +10,28 @@ import { Wallet, TrendingUp, TrendingDown, RefreshCcw, BookOpen, MessageSquare, 
 // Robust INITIAL fallback mock price map based on real June 2026 indexes
 const DEFAULT_PRICES: GoldPriceMap = {
   sjc: {
-    name: "Vàng miếng SJC",
-    buy: 86.5,
-    sell: 89.0,
-    yesterdayChange: 0.85,
-    code: "SJC",
-    history: [84.2, 84.5, 85.0, 85.2, 85.8, 85.65, 86.5]
+    name: "SJC Bảo Tín Mạnh Hải",
+    buy: 142.0,
+    sell: 144.5,
+    yesterdayChange: 1.2,
+    code: "SJC-BTMH",
+    history: [140.0, 140.5, 141.2, 141.5, 142.0, 141.8, 142.0]
   },
   doji: {
-    name: "Vàng nhẫn Doji 9999",
-    buy: 77.2,
-    sell: 78.6,
-    yesterdayChange: 0.45,
-    code: "DOJI",
-    history: [75.5, 75.8, 76.0, 76.4, 76.8, 76.75, 77.2]
+    name: "Nhẫn trơn Kim Gia Bảo 24K",
+    buy: 136.5,
+    sell: 138.0,
+    yesterdayChange: 0.85,
+    code: "KGB-BTMH",
+    history: [135.2, 135.5, 135.8, 136.0, 136.5, 136.3, 136.5]
   },
   pnj: {
-    name: "Nhẫn trơn PNJ 24K",
-    buy: 76.8,
-    sell: 78.2,
-    yesterdayChange: -0.22,
-    code: "PNJ",
-    history: [75.8, 76.0, 76.2, 76.5, 77.0, 77.02, 76.8]
+    name: "Nhẫn tròn 999.9 BTMH",
+    buy: 136.0,
+    sell: 137.5,
+    yesterdayChange: 0.65,
+    code: "BT24K-BTMH",
+    history: [134.5, 134.8, 135.2, 135.4, 136.0, 135.8, 136.0]
   }
 };
 
@@ -70,7 +70,11 @@ export default function App() {
     const saved = localStorage.getItem("cute_gold_portfolio");
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Only track Nhẫn trơn Kim Gia Bảo 24K (doji)
+          return parsed.filter((tx) => tx.type === "doji" || tx.type === "pnj" || tx.type === "sjc").map(tx => ({...tx, type: "doji"}));
+        }
       } catch (e) {
         console.error("Error parsing saved portfolio:", e);
       }
@@ -202,8 +206,8 @@ export default function App() {
             <div className="flex items-center gap-1.5">
               <span className="text-xl">🐱</span>
               <div>
-                <h1 className="text-base font-black tracking-tight text-[#854D0E] uppercase leading-none">Vàng Của Tôi</h1>
-                <span className="text-[9px] font-bold text-[#A16207]/75">MÈO BÉO CANH GIỮ HŨ VÀNG</span>
+                <h1 className="text-base font-black tracking-tight text-[#854D0E] uppercase leading-none">Kim Gia Bảo 24K</h1>
+                <span className="text-[9px] font-bold text-[#A16207]/75">MÈO BÉO CANH GIỮ HŨ VÀNG NHẪN TRƠN</span>
               </div>
             </div>
 
@@ -226,7 +230,7 @@ export default function App() {
 
             <div>
               <span className="text-[9px] uppercase tracking-wider block font-bold text-[#A16207]">
-                Tổng két vàng tích lũy
+                Két Nhẫn Kim Gia Bảo 24K
               </span>
               <div className="flex items-baseline gap-1">
                 <span className="text-xl font-black font-mono tracking-tight text-[#854D0E]">
