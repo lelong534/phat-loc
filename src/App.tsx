@@ -5,7 +5,44 @@ import VaultForm from "./components/VaultForm";
 import GoldVaultList from "./components/GoldVaultList";
 import GoldPriceChart from "./components/GoldPriceChart";
 import GoldChatbot from "./components/GoldChatbot";
+import AlertCenter, { GoldNotificationItem } from "./components/AlertCenter";
 import { Wallet, TrendingUp, TrendingDown, RefreshCcw, BookOpen, MessageSquare, Newspaper, Sparkles, Smartphone } from "lucide-react";
+
+interface InAppToast {
+  id: string;
+  title: string;
+  description: string;
+  type: "up" | "down";
+}
+
+function playCoinSound() {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = "sine";
+    // Upward minor-major golden chime
+    osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+    osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.08); // E5
+    osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.16); // G5
+    osc.frequency.setValueAtTime(1046.50, ctx.currentTime + 0.24); // C6
+    
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.85);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start();
+    osc.stop(ctx.currentTime + 0.9);
+  } catch (e) {
+    console.warn("Web Audio chime blocked or unsupported:", e);
+  }
+}
 
 // Robust INITIAL fallback mock price map based on real June 2026 indexes
 const DEFAULT_PRICES: GoldPriceMap = {
@@ -96,6 +133,115 @@ export default function App() {
   // Assets net change TODAY (triệu VNĐ)
   const [assetsChangeToday, setAssetsChangeToday] = useState<number>(0);
 
+  // Notification alert system state hooks
+  const [lastNotifiedValue, setLastNotifiedValue] = useState<number>(() => {
+    const saved = localStorage.getItem("cute_gold_last_notified_value");
+    return saved ? parseFloat(saved) : 0;
+  });
+  
+  const [threshold, setThreshold] = useState<number>(() => {
+    const saved = localStorage.getItem("cute_gold_alert_threshold");
+    return saved ? parseFloat(saved) : 1.0; // 1% threshold as default
+  });
+
+  const [notificationHistory, setNotificationHistory] = useState<GoldNotificationItem[]>(() => {
+    const saved = localStorage.getItem("cute_gold_notification_history");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        console.error("Error reading alert history log:", e);
+      }
+    }
+    return [];
+  });
+
+  const [permissionStatus, setPermissionStatus] = useState<string>(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      return Notification.permission;
+    }
+    return "unsupported";
+  });
+
+  const [toasts, setToasts] = useState<InAppToast[]>([]);
+
+  // Sync threshold to localstorage
+  useEffect(() => {
+    localStorage.setItem("cute_gold_alert_threshold", threshold.toString());
+  }, [threshold]);
+
+  // Toast automatic removal timer
+  useEffect(() => {
+    if (toasts.length > 0) {
+      const timer = setTimeout(() => {
+        setToasts((prev) => prev.slice(1));
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toasts]);
+
+  // Request browser Notification permissions
+  const handleRequestPermission = () => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      Notification.requestPermission().then((permission) => {
+        setPermissionStatus(permission);
+        if (permission === "granted") {
+          // Play a friendly greeting sound to verify
+          playCoinSound();
+          const testToast: InAppToast = {
+            id: "permission-test",
+            title: "🔔 Kích hoạt thông báo thành công!",
+            description: "Hệ thống sẽ gửi thông báo đẩy trực tiếp qua màn hình khi có biến động giá trị vàng meow!",
+            type: "up"
+          };
+          setToasts((prev) => [...prev, testToast]);
+        }
+      });
+    } else {
+      alert("Trình duyệt này không hỗ trợ Web Notifications.");
+    }
+  };
+
+  const handleClearHistory = () => {
+    setNotificationHistory([]);
+    localStorage.removeItem("cute_gold_notification_history");
+  };
+
+  // Trigger simulated market price fluctuation
+  const triggerMockFluctuation = (percent: number) => {
+    if (portfolioSummary.currentValue === 0) {
+      // In-app alert showing need for transactions
+      const emptyToast: InAppToast = {
+        id: "warn-empty",
+        title: "⚠️ Két vàng chưa có tích lũy!",
+        description: "Sen ơi, két vàng đang trống! Hãy cất một vài nhẫn tròn trơn vào két trước thì mới sinh trị giá để test biến động được nhé meow~",
+        type: "down"
+      };
+      setToasts((prev) => [...prev, emptyToast]);
+      playCoinSound();
+      return;
+    }
+
+    setPrices((prev) => {
+      const target = prev.doji;
+      const multiplier = 1 + percent / 100;
+      const newSell = parseFloat((target.sell * multiplier).toFixed(2));
+      const newBuy = parseFloat((target.buy * multiplier).toFixed(2));
+      
+      return {
+        ...prev,
+        doji: {
+          ...target,
+          buy: newBuy,
+          sell: newSell,
+          yesterdayChange: parseFloat((target.yesterdayChange + (newSell - target.sell)).toFixed(2)),
+          history: [...target.history.slice(0, -1), newSell]
+        }
+      };
+    });
+  };
+
   // Sync to localstorage
   useEffect(() => {
     localStorage.setItem("cute_gold_portfolio", JSON.stringify(transactions));
@@ -163,6 +309,79 @@ export default function App() {
     setAssetsChangeToday(liveDailyChange);
   }, [transactions, prices]);
 
+  // Monitor gold portfolio changes to trigger alert meow meow!
+  useEffect(() => {
+    if (portfolioSummary.currentValue === 0) return;
+
+    if (lastNotifiedValue === 0) {
+      setLastNotifiedValue(portfolioSummary.currentValue);
+      localStorage.setItem("cute_gold_last_notified_value", portfolioSummary.currentValue.toString());
+      return;
+    }
+
+    const difference = portfolioSummary.currentValue - lastNotifiedValue;
+    const pctChange = (difference / lastNotifiedValue) * 100;
+    const absChange = Math.abs(pctChange);
+
+    if (absChange >= threshold) {
+      const id = Date.now().toString();
+      const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      const dateStr = new Date().toLocaleDateString("vi-VN");
+      const direction = pctChange > 0 ? "up" : "down";
+
+      const title = direction === "up" 
+        ? "📈 Tài sản vàng tăng vọt!" 
+        : "📉 Tài sản vàng sụt giảm!";
+      const description = `Tổng trị giá két nhẫn vàng của Sen đã biến động ${pctChange > 0 ? "+" : ""}${pctChange.toFixed(2)}% (so với mốc ${lastNotifiedValue.toFixed(2)}Trđ).`;
+
+      // 1. Synth slot machine gold chime sound!
+      playCoinSound();
+
+      // 2. HTML5 System Push Notification
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        try {
+          new Notification(title, {
+            body: `${description} Đạt ${portfolioSummary.currentValue.toFixed(2)}Trđ meow!`,
+            tag: "gold-vault-change",
+            icon: "https://baotinmanhhai.vn/favicon.ico"
+          });
+        } catch (err) {
+          console.warn("System Notification trigger failed:", err);
+        }
+      }
+
+      // 3. Trigger In-App beautiful toast
+      const newToast: InAppToast = {
+        id,
+        title,
+        description: `${description} Giá trị đạt ${portfolioSummary.currentValue.toFixed(2)} triệu đ. Mèo béo đã ghi sổ!`,
+        type: direction
+      };
+      setToasts((prev) => [...prev, newToast]);
+
+      // 4. Save to journal list
+      const newItem: GoldNotificationItem = {
+        id,
+        timestamp: `${dateStr} ${timeStr}`,
+        oldValue: lastNotifiedValue,
+        newValue: portfolioSummary.currentValue,
+        percentChange: pctChange,
+        type: direction,
+        title,
+        description: `Trị giá két nhảy vọt từ ${lastNotifiedValue.toFixed(2)} triệu đ lên ${portfolioSummary.currentValue.toFixed(2)} triệu đ. Mèo ú meow meow!`
+      };
+      setNotificationHistory((prev) => {
+        const updated = [newItem, ...prev];
+        localStorage.setItem("cute_gold_notification_history", JSON.stringify(updated.slice(0, 30)));
+        return updated;
+      });
+
+      // 5. Update comparison baseline so we can detect future shifts from this new baseline point!
+      setLastNotifiedValue(portfolioSummary.currentValue);
+      localStorage.setItem("cute_gold_last_notified_value", portfolioSummary.currentValue.toString());
+    }
+  }, [portfolioSummary.currentValue, lastNotifiedValue, threshold]);
+
   const handleAddTransaction = (newTx: Omit<GoldTransaction, "id">) => {
     const transaction: GoldTransaction = {
       ...newTx,
@@ -195,10 +414,10 @@ export default function App() {
   const isProfit = portfolioSummary.totalProfit >= 0;
 
   return (
-    <div className="min-h-screen bg-[#FFFBEB] md:py-6 font-sans transition-colors">
+    <div className="h-[100dvh] md:h-screen md:py-6 bg-[#FFFBEB] font-sans transition-colors overflow-hidden flex items-center justify-center">
       
       {/* Sleek full-pane centered application surface */}
-      <div className="w-full max-w-2xl mx-auto bg-white min-h-screen shadow-md md:rounded-3xl md:my-6 md:border border-amber-200/40 overflow-hidden flex flex-col" id="app-container">
+      <div className="w-full max-w-2xl h-full md:h-[85vh] md:max-h-[850px] md:min-h-[650px] bg-white shadow-xl md:rounded-3xl md:border border-amber-200/40 overflow-hidden flex flex-col" id="app-container">
         
         {/* Dynamic header / Title - Sleek Interface Style */}
         <header className="bg-gradient-to-b from-[#FFFDF0] to-[#FFFBEB] p-5 pt-5 pb-4 shadow-xs border-b border-[#FDE68A] shrink-0">
@@ -269,7 +488,7 @@ export default function App() {
         </header>
 
         {/* Scrollable View Containment Area */}
-        <main className="flex-1 bg-white" id="main-scroll-body">
+        <main className="flex-1 overflow-y-auto bg-white" id="main-scroll-body">
           
           {/* Animated Golden Cat Representative above */}
           <section className="bg-gradient-to-b from-[#FFFDF0] to-transparent pt-3 pb-2 select-none border-b border-[#FFFBEB]">
@@ -285,6 +504,18 @@ export default function App() {
             {activeTab === "vault" && (
               <>
                 <VaultForm prices={prices} onAddTransaction={handleAddTransaction} />
+                <AlertCenter
+                  currentValue={portfolioSummary.currentValue}
+                  lastNotifiedValue={lastNotifiedValue}
+                  setLastNotifiedValue={setLastNotifiedValue}
+                  triggerMockFluctuation={triggerMockFluctuation}
+                  onClearHistory={handleClearHistory}
+                  notificationHistory={notificationHistory}
+                  threshold={threshold}
+                  setThreshold={setThreshold}
+                  permissionStatus={permissionStatus}
+                  onRequestPermission={handleRequestPermission}
+                />
                 <GoldVaultList 
                   transactions={transactions} 
                   prices={prices} 
@@ -333,7 +564,7 @@ export default function App() {
         </main>
 
         {/* Modern Web App Navigation Dock - Sticky Bottom */}
-        <nav className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-205/60 p-3 px-6 flex justify-around items-center z-40 shadow-md mt-auto">
+        <nav className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-3 px-6 flex justify-around items-center z-40 shadow-md mt-auto">
           
           <button
             onClick={() => setActiveTab("vault")}
@@ -377,6 +608,37 @@ export default function App() {
 
         </nav>
       </div>
+
+      {/* Absolute In-App Floating Toasts overlay stack */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-xs px-4 pointer-events-none flex flex-col gap-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`pointer-events-auto p-3.5 rounded-2xl shadow-xl border flex gap-3 transition-all duration-300 animate-bounce-short ${
+              toast.type === "up"
+                ? "bg-[#ECFDF5] border-emerald-200 text-emerald-900"
+                : "bg-[#FFF1F2] border-rose-200 text-rose-900"
+            }`}
+          >
+            <div className="text-lg">
+              {toast.type === "up" ? "📈" : toast.id === "warn-empty" ? "⚠️" : "📉"}
+            </div>
+            <div className="flex-1">
+              <h5 className="font-bold text-[11px] leading-tight flex items-center gap-1">
+                <span>{toast.title}</span>
+              </h5>
+              <p className="text-[9px] mt-1 text-slate-600 leading-normal font-medium">{toast.description}</p>
+            </div>
+            <button
+              onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+              className="text-[10px] font-bold shrink-0 text-slate-400 hover:text-slate-700 self-start p-0.5 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 }
