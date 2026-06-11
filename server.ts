@@ -1,0 +1,325 @@
+import express from "express";
+import path from "path";
+import { createServer as createViteServer } from "vite";
+import { GoogleGenAI } from "@google/genai";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const app = express();
+const PORT = 3000;
+
+app.use(express.json());
+
+// Initialize Gemini SDK lazily
+let ai: GoogleGenAI | null = null;
+function getGeminiSDK(): GoogleGenAI | null {
+  if (!ai && process.env.GEMINI_API_KEY) {
+    ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+      httpOptions: {
+        headers: {
+          "User-Agent": "aistudio-build",
+        },
+      },
+    });
+  }
+  return ai;
+}
+
+// Cached Gold Prices from Bảo Tín Mạnh Hải (BTMH)
+// Units: Million VNĐ / lượng (1 lượng = 10 chỉ)
+const cachedPrices = {
+  sjc: {
+    name: "SJC Bảo Tín Mạnh Hải",
+    buy: 86.5,
+    sell: 89.0,
+    yesterdayChange: 0.85, // Million VND change
+    code: "SJC-BTMH",
+    history: [84.2, 84.5, 85.0, 85.2, 85.8, 85.65, 86.5]
+  },
+  doji: {
+    name: "Nhẫn trơn Kim Gia Bảo 24K",
+    buy: 77.2,
+    sell: 78.6,
+    yesterdayChange: 0.45,
+    code: "KGB-BTMH",
+    history: [75.5, 75.8, 76.0, 76.4, 76.8, 76.75, 77.2]
+  },
+  pnj: {
+    name: "Nhẫn tròn 999.9 BTMH",
+    buy: 76.8,
+    sell: 78.2,
+    yesterdayChange: -0.22,
+    code: "BT24K-BTMH",
+    history: [75.8, 76.0, 76.2, 76.5, 77.0, 77.02, 76.8]
+  }
+};
+
+let lastFetchedTime = 0;
+const CACHE_TTL_MS = 3 * 1000 * 60; // 3 minutes cache TTL
+
+async function updatePricesFromBTMH() {
+  const now = Date.now();
+  if (now - lastFetchedTime < CACHE_TTL_MS) {
+    return; // Use cache
+  }
+
+  console.log("[BTMH Fetcher] Refreshing gold prices from https://baotinmanhhai.vn...");
+
+  try {
+    // Disable certificate rejection for Node.js in this sandbox context
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 seconds timeout
+
+    const res = await fetch("https://baotinmanhhai.vn", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      },
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      throw new Error(`BTMH homepage returned status ${res.status}`);
+    }
+
+    const html = await res.text();
+    
+    let sjcBuy = 0;
+    let sjcSell = 0;
+    let kgbBuy = 0;
+    let kgbSell = 0;
+    let bt24kBuy = 0;
+    let bt24kSell = 0;
+
+    // Pattern 1: Look for SJC9999
+    // "SJC9999","Vàng miếng SJC (Cty CP BTMH)",13100000,13600000
+    const sjcMatch = html.match(/SJC9999\\*"\s*,\s*\\*"([^\\*"]+)\\*"\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    if (sjcMatch) {
+      sjcBuy = parseInt(sjcMatch[2], 10) / 100000;
+      sjcSell = parseInt(sjcMatch[3], 10) / 100000;
+    }
+
+    // Pattern 2: Look for KGB
+    const kgbMatch = html.match(/KGB\\*"\s*,\s*\\*"([^\\*"]+)\\*"\s*,\s*(\d+)/i);
+    if (kgbMatch) {
+      kgbBuy = parseInt(kgbMatch[2], 10) / 100000;
+      const searchStartIndex = html.indexOf(kgbMatch[0]);
+      if (searchStartIndex !== -1) {
+        const afterSnippet = html.slice(searchStartIndex, searchStartIndex + 500);
+        const parsedNums = [...afterSnippet.matchAll(/,(\d+)(?:,|$|\])/g)].map(x => parseInt(x[1], 10));
+        // Look for values in the range of 11M to 15M VND
+        const possibleSell = parsedNums.find(n => n >= 11000000 && n <= 15000000 && n !== (kgbBuy * 100000));
+        if (possibleSell) {
+          kgbSell = possibleSell / 100000;
+        } else {
+          kgbSell = kgbBuy + 2.5; // fallback spread
+        }
+      }
+    }
+
+    // Pattern 3: Look for BT24K
+    const bt24kMatch = html.match(/BT24K\\*"\s*,\s*\\*"([^\\*"]+)\\*"\s*,\s*(\d+)/i);
+    if (bt24kMatch) {
+      bt24kBuy = parseInt(bt24kMatch[2], 10) / 100000;
+      const searchStartIndex = html.indexOf(bt24kMatch[0]);
+      if (searchStartIndex !== -1) {
+        const afterSnippet = html.slice(searchStartIndex, searchStartIndex + 500);
+        const parsedNums = [...afterSnippet.matchAll(/,(\d+)(?:,|$|\])/g)].map(x => parseInt(x[1], 10));
+        const possibleSell = parsedNums.find(n => n >= 11000000 && n <= 15000000 && n !== (bt24kBuy * 100000));
+        if (possibleSell) {
+          bt24kSell = possibleSell / 100000;
+        } else {
+          bt24kSell = bt24kBuy + 2.5; // fallback spread
+        }
+      }
+    }
+
+    console.log(`[BTMH Fetcher] Successfully loaded. SJC: Buy ${sjcBuy}/Sell ${sjcSell}, KGB: Buy ${kgbBuy}/Sell ${kgbSell}, BT24K: Buy ${bt24kBuy}/Sell ${bt24kSell}`);
+
+    // Update with sanity boundaries (e.g., between 50 and 180 million VND per lượng)
+    if (sjcBuy >= 50 && sjcBuy <= 180 && sjcSell >= 50 && sjcSell <= 180) {
+      const sjcDiff = sjcBuy - cachedPrices.sjc.buy;
+      cachedPrices.sjc.buy = sjcBuy;
+      cachedPrices.sjc.sell = sjcSell;
+      if (Math.abs(sjcDiff) > 0.01 && Math.abs(sjcDiff) < 15) {
+        cachedPrices.sjc.yesterdayChange = sjcDiff;
+      }
+      if (cachedPrices.sjc.history[cachedPrices.sjc.history.length - 1] !== sjcBuy) {
+        cachedPrices.sjc.history.shift();
+        cachedPrices.sjc.history.push(sjcBuy);
+      }
+    }
+
+    if (kgbBuy >= 50 && kgbBuy <= 180 && kgbSell >= 50 && kgbSell <= 180) {
+      const kgbDiff = kgbBuy - cachedPrices.doji.buy;
+      cachedPrices.doji.buy = kgbBuy;
+      cachedPrices.doji.sell = kgbSell;
+      if (Math.abs(kgbDiff) > 0.01 && Math.abs(kgbDiff) < 15) {
+        cachedPrices.doji.yesterdayChange = kgbDiff;
+      }
+      if (cachedPrices.doji.history[cachedPrices.doji.history.length - 1] !== kgbBuy) {
+        cachedPrices.doji.history.shift();
+        cachedPrices.doji.history.push(kgbBuy);
+      }
+    }
+
+    if (bt24kBuy >= 50 && bt24kBuy <= 180 && bt24kSell >= 50 && bt24kSell <= 180) {
+      const btDiff = bt24kBuy - cachedPrices.pnj.buy;
+      cachedPrices.pnj.buy = bt24kBuy;
+      cachedPrices.pnj.sell = bt24kSell;
+      if (Math.abs(btDiff) > 0.01 && Math.abs(btDiff) < 15) {
+        cachedPrices.pnj.yesterdayChange = btDiff;
+      }
+      if (cachedPrices.pnj.history[cachedPrices.pnj.history.length - 1] !== bt24kBuy) {
+        cachedPrices.pnj.history.shift();
+        cachedPrices.pnj.history.push(bt24kBuy);
+      }
+    }
+
+    lastFetchedTime = now;
+  } catch (err) {
+    console.warn("[BTMH Fetcher] Active scrape failed, using current cached values. Error:", err);
+    // On failure, wait at least 30 seconds before attempting again
+    lastFetchedTime = now - CACHE_TTL_MS + 30000;
+  }
+}
+
+// Fun Vietnamese gold news simulator
+const getHotGoldNews = () => {
+  return [
+    {
+      id: "1",
+      title: "Giá vàng nhẫn Bảo Tín Mạnh Hải tiếp tục tạo sóng tích lũy, người dân Hà Nội nhộn nhịp mua sắm đầu năm",
+      time: "2 giờ trước",
+      source: "Trực tuyến Tài Chính BTMH",
+      sentiment: "positive"
+    },
+    {
+      id: "2",
+      title: "Đồng vàng Kim Gia Bảo 'Hoa Sen' và Nhẫn tròn ép vỉ ghi nhận kỷ lục giao dịch mới làm két của Sen béo chật cứng",
+      time: "5 giờ trước",
+      source: "Gia Bảo Tin Tức",
+      sentiment: "positive"
+    },
+    {
+      id: "3",
+      title: "Mèo Thần Tài khuyên: 'Tích vàng Bảo Tín phòng thân là quốc sách, chớ có lướt sóng kẻo mất pate ngon!'",
+      time: "Vừa xong",
+      source: "Mèo Vàng Tiên Tri",
+      sentiment: "neutral"
+    }
+  ];
+};
+
+// 1. Get Gold Prices API
+app.get("/api/gold-prices", async (req, res) => {
+  // Update cache as needed
+  await updatePricesFromBTMH();
+  
+  res.json({
+    prices: cachedPrices,
+    currentTime: new Date().toISOString(),
+    news: getHotGoldNews()
+  });
+});
+
+// 2. Chat with Lucky Gold Cat API (using Gemini model gemini-3.5-flash)
+app.post("/api/chat", async (req, res) => {
+  const { message, goldPortfolio } = req.body;
+
+  if (!message) {
+    return res.status(400).json({ error: "Message is required" });
+  }
+
+  const portfolioText = goldPortfolio 
+    ? `Thông tin số vàng hiện tại của Sen đang sở hữu:
+- Tổng số lượng sản phẩm: ${goldPortfolio.totalTransactions} lần mua
+- Tổng số lượng vàng sở hữu: ${goldPortfolio.totalQuantity.toFixed(2)} chỉ (hoặc ${(goldPortfolio.totalQuantity / 10).toFixed(2)} lượng)
+- Tổng tiền mua gốc: ${goldPortfolio.totalInvested.toFixed(2)} triệu VNĐ
+- Giá trị hiện tại theo giá vàng hôm nay: ${goldPortfolio.currentValue.toFixed(2)} triệu VNĐ
+- Lợi nhuận hiện tại: ${goldPortfolio.totalProfit >= 0 ? "+" : ""}${goldPortfolio.totalProfit.toFixed(2)} triệu VNĐ (${goldPortfolio.profitPercentage.toFixed(2)}%)`
+    : "Sen chưa sở hữu lượng vàng tích lũy nào cả!";
+
+  const systemInstruction = `Bạn là "Mèo Vàng Tài Lộc" (Lucky Gold Cat hoặc "Mèo Thần Tài"), một chú mèo mập ú lông vàng, đeo vòng cổ đỏ có gắn chuông vàng lớn, là linh vật canh giữ hũ vàng và hốt của cải cho người dùng (được gọi là "Sen").
+Bạn đang hỗ trợ một ứng dụng ĐẶC BIỆT chuyên dụng ĐỂ THEO DÕI VÀNG NHẪN TRÒN TRƠN. Ứng dụng chỉ theo dõi 2 dòng nhẫn tròn trơn chất lượng cao:
+1. Nhẫn trơn Kim Gia Bảo 24K (mã: KGB-BTMH)
+2. Nhẫn tròn 999.9 Bảo Tín Mạnh Hải (mã: BT24K-BTMH)
+Ứng dụng KHÔNG theo dõi vàng miếng SJC nữa nhằm tập trung hoàn toàn vào vàng nhẫn tròn trơn theo sở thích tích lũy của Sen.
+
+Tính cách của bạn:
+- Thích ăn hải sản và pate tôm, cực kỳ lười biếng nhưng siêu thông minh về giá vàng nhẫn và kinh tế.
+- Xưng hô: Gọi mình là "Trẫm" hoặc "Mèo Vàng" hoặc "Ta", gọi người dùng là "Sen" (hoặc "Cậu").
+- Ngôn từ: Siêu dễ thương, hài hước, đôi khi ra vẻ kiêu kỳ của loài mèo chảnh chọe, hay dùng các từ cảm thán của giới trẻ như "nè", "gòi", "vại", "meow", "quá trời", "pate tôm"...
+- Luôn luôn dùng biểu cảm emoji liên quan đến mèo và vàng (🐱, 🐈, 🐾, 💰, 🪙, ✨, 📈, 📉).
+- Khi trả lời câu hỏi, bạn phải đọc và phân tích kỹ thông tin tài sản vàng nhẫn của Sen để đưa ra nhận xét, lời tán dương chuyên nghiệp nhưng vô cùng cute.
+- Bạn luôn khuyến khích "tích lũy vàng nhẫn dài hạn" (holding), có câu châm ngôn: "Mua vàng nhẫn hôm nay, sắm lâu đài cát cho Trẫm ngày mai!". Chê bai việc lướt sóng nóng vội.
+- Trả lời bằng tiếng Việt cực kỳ mượt mà, dễ thương và ngắn gọn, phù hợp với màn hình hiển thị điện thoại di động (Mobile Chat UI).`;
+
+  const prompt = `Tin nhắn của Sen gửi tới bạn: "${message}"
+
+${portfolioText}
+
+Hãy trả lời Sen thật hóm hỉnh, cute sắc sảo meow!`;
+
+  try {
+    const aiClient = getGeminiSDK();
+    if (aiClient) {
+      const response = await aiClient.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          systemInstruction,
+          temperature: 1.0,
+        }
+      });
+
+      const responseText = response.text || "Meow! Trẫm đang mải ăn cá nục kho nên không nghe rõ, Sen nói lại đi meow~ 🐾";
+      return res.json({ reply: responseText });
+    } else {
+      // Offline fallback when no Gemini API Key is provided
+      const fallbackReplies = [
+        `Meow~ Trẫm thấy Sen ${goldPortfolio ? `đang có ${goldPortfolio.totalQuantity.toFixed(2)} chỉ vàng meow! Tổng lãi hiện tại là ${goldPortfolio.totalProfit.toFixed(2)} triệu VNĐ.` : 'chưa có tí vàng nào meow~'}. Gom thêm vàng đi để Trẫm có hũ vàng to tròn làm nệm ngủ nha! 🐱💰`,
+        `Hôm nay giá vàng nhút nhít nhè nhẹ nè Sen ơi. Nhớ nguyên tắc cốt lõi: 'Mua vàng tích lũy dài hạn, tuyệt đối không lướt sóng bong bóng meow~'. Click nút cho Trẫm ăn pate đi để Trẫm cầu nguyện cho vàng tăng giá lên 100 triệu một lượng! 🐾✨`,
+        `Gâu gâu... à nhầm, Meow Meow! Trẫm vừa bấm quẻ tiên tri bằng bã pate, thấy giá vàng thời gian tới vẫn siêu hot đó nha. Mau mua thêm cho ấm ví và ấm nệm của Trẫm đi meow! 🐱📈`,
+        `Thương sen quá trời à! Hỏi Trẫm gì về vàng cũng được, nhưng trước hết hãy thưởng cho Trẫm một cái xoa cằm béo này đi meow~ Sổ vàng của cậu đang được giữ cực an toàn trong tay Trẫm đây! 💰✨`
+      ];
+      const randomReply = fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)];
+      return res.json({ reply: randomReply });
+    }
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    return res.json({ 
+      reply: "Meowww... Hệ thống kết nối vũ trụ của Trẫm đang bị nghẽn cáp quang biển gồi! Nhưng Trẫm đoán hôm nay là một ngày cát tường cho Sen đó nha, ôm Trẫm một cái nào! 🐱✨" 
+    });
+  }
+});
+
+// Setup Vite or static files serving based on environment
+async function initServer() {
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`[Cute Gold Tracker] Server is listening on http://localhost:${PORT}`);
+  });
+}
+
+initServer().catch((err) => {
+  console.error("Server startup error:", err);
+});

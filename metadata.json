@@ -1,0 +1,6 @@
+{
+  "name": "Mèo Béo Canh Vàng",
+  "description": "Ứng dụng di động theo dõi giá vàng cá nhân siêu dễ thương với trợ lý mèo thần tài báo biến động tài sản trực quan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
