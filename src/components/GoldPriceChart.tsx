@@ -68,7 +68,7 @@ export default function GoldPriceChart({ prices, onModifyPrice }: GoldPriceChart
   };
 
   return (
-    <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm max-w-md mx-auto my-4">
+    <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm w-full max-w-md lg:max-w-full mx-auto my-4">
       {/* Brand Header */}
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">

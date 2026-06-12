@@ -64,7 +64,7 @@ export default function VaultForm({ prices, onAddTransaction }: VaultFormProps) 
   };
 
   return (
-    <div className="bg-amber-50/50 border border-amber-200/60 rounded-3xl p-5 shadow-sm max-w-md mx-auto my-4">
+    <div className="bg-amber-50/50 border border-amber-200/60 rounded-3xl p-5 shadow-sm w-full max-w-md lg:max-w-full mx-auto my-4">
       <h3 className="text-sm font-bold text-amber-950 flex items-center gap-1.5 mb-3.5">
         <span className="text-base">💰</span>
         <span>Cất Thêm Vàng Vào Két Sét</span>

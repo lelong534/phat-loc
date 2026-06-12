@@ -81,7 +81,7 @@ export default function GoldChatbot({ portfolio }: GoldChatbotProps) {
   };
 
   return (
-    <div className="bg-slate-50 border border-slate-100 rounded-3xl p-4 shadow-sm max-w-md mx-auto my-4 flex flex-col h-[350px] relative">
+    <div className="bg-slate-50 border border-slate-100 rounded-3xl p-4 shadow-sm w-full max-w-md lg:max-w-4xl mx-auto my-4 flex flex-col h-[500px] relative">
       {/* Title block */}
       <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 mb-3 shrink-0">
         <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">

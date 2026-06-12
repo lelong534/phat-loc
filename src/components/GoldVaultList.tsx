@@ -17,7 +17,7 @@ export default function GoldVaultList({
   
   if (transactions.length === 0) {
     return (
-      <div className="text-center py-8 p-6 bg-slate-50 border border-slate-100 rounded-3xl max-w-md mx-auto my-3">
+      <div className="text-center py-8 p-6 bg-slate-50 border border-slate-100 rounded-3xl w-full max-w-md lg:max-w-full mx-auto my-3">
         <span className="text-3xl filter grayscale opacity-45">📭</span>
         <p className="text-xs text-slate-400 mt-2 font-medium">Két vàng đang trống trơn rồi sen ơi!</p>
         <p className="text-[10px] text-slate-400/80 mt-1">Hãy cất vài chỉ vàng để mèo béo canh giữ nhé meow~</p>
@@ -26,7 +26,7 @@ export default function GoldVaultList({
   }
 
   return (
-    <div className="w-full max-w-md mx-auto my-3 px-1">
+    <div className="w-full max-w-md lg:max-w-full mx-auto my-3 px-1">
       <div className="flex justify-between items-center mb-3">
         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
           Sổ Giao Dịch Chi Tiết ({transactions.length})

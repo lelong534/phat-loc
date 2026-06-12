@@ -350,16 +350,7 @@ export default function App() {
         }
       }
 
-      // 3. Trigger In-App beautiful toast
-      const newToast: InAppToast = {
-        id,
-        title,
-        description: `${description} Giá trị đạt ${portfolioSummary.currentValue.toFixed(2)} triệu đ. Mèo béo đã ghi sổ!`,
-        type: direction
-      };
-      setToasts((prev) => [...prev, newToast]);
-
-      // 4. Save to journal list
+      // 3. Save to journal list
       const newItem: GoldNotificationItem = {
         id,
         timestamp: `${dateStr} ${timeStr}`,
@@ -376,11 +367,37 @@ export default function App() {
         return updated;
       });
 
-      // 5. Update comparison baseline so we can detect future shifts from this new baseline point!
+      // 4. Update comparison baseline so we can detect future shifts from this new baseline point!
       setLastNotifiedValue(portfolioSummary.currentValue);
       localStorage.setItem("cute_gold_last_notified_value", portfolioSummary.currentValue.toString());
     }
   }, [portfolioSummary.currentValue, lastNotifiedValue, threshold]);
+
+  // Hook tab/window exit beforeunload / unload handlers to dispatch immediate native system push notification when closing browser
+  useEffect(() => {
+    const handleBrowserCloseNotification = () => {
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        if (portfolioSummary.currentValue > 0) {
+          try {
+            new Notification("🐱 Mèo Béo đã khóa hũ vàng an toàn!", {
+              body: `Tạm biệt Sen! Tổng trị giá hũ vàng nhẫn 24K hiện tại là ${portfolioSummary.currentValue.toFixed(2)} triệu đ. Mèo béo ôm hũ ngủ giữ của cẩn mật nhé meow~`,
+              tag: "gold-vault-quit-lock",
+              icon: "https://baotinmanhhai.vn/favicon.ico"
+            });
+          } catch (e) {
+            console.warn("Could not fire close notification:", e);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBrowserCloseNotification);
+    window.addEventListener("unload", handleBrowserCloseNotification);
+    return () => {
+      window.removeEventListener("beforeunload", handleBrowserCloseNotification);
+      window.removeEventListener("unload", handleBrowserCloseNotification);
+    };
+  }, [portfolioSummary.currentValue]);
 
   const handleAddTransaction = (newTx: Omit<GoldTransaction, "id">) => {
     const transaction: GoldTransaction = {
@@ -414,74 +431,76 @@ export default function App() {
   const isProfit = portfolioSummary.totalProfit >= 0;
 
   return (
-    <div className="h-[100dvh] md:h-screen md:py-6 bg-[#FFFBEB] font-sans transition-colors overflow-hidden flex items-center justify-center">
+    <div className="min-h-screen h-screen w-full bg-[#FFFDF7] font-sans transition-colors overflow-hidden flex flex-col">
       
       {/* Sleek full-pane centered application surface */}
-      <div className="w-full max-w-2xl h-full md:h-[85vh] md:max-h-[850px] md:min-h-[650px] bg-white shadow-xl md:rounded-3xl md:border border-amber-200/40 overflow-hidden flex flex-col" id="app-container">
+      <div className="w-full h-full bg-[#FFFDF7] overflow-hidden flex flex-col" id="app-container">
         
         {/* Dynamic header / Title - Sleek Interface Style */}
         <header className="bg-gradient-to-b from-[#FFFDF0] to-[#FFFBEB] p-5 pt-5 pb-4 shadow-xs border-b border-[#FDE68A] shrink-0">
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xl">🐱</span>
+          <div className="max-w-7xl mx-auto w-full">
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xl">🐱</span>
+                <div>
+                  <h1 className="text-base font-black tracking-tight text-[#854D0E] uppercase leading-none">Kim Gia Bảo 24K</h1>
+                  <span className="text-[9px] font-bold text-[#A16207]/75">MÈO BÉO CANH GIỮ HŨ VÀNG NHẪN TRƠN</span>
+                </div>
+              </div>
+
+              <button
+                onClick={fetchPrices}
+                disabled={isLoading}
+                className="p-1 px-2.5 rounded-xl bg-white hover:bg-amber-50 border border-[#FDE68A] text-[#854D0E] hover:scale-105 active:scale-95 transition-all text-[9px] font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <RefreshCcw size={9} className={isLoading ? "animate-spin" : ""} />
+                <span>Cập nhật</span>
+              </button>
+            </div>
+
+            {/* Portfolio Net Worth Box Widget - Sleek Interface style */}
+            <div className="bg-[#FEF3C7] text-[#92400E] rounded-2.5xl p-3 px-4 shadow-sm flex items-center justify-between relative overflow-hidden border border-[#FDE68A]">
+              {/* Sparkles decoration background */}
+              <div className="absolute right-2 top-2 text-[#F59E0B] opacity-15 pointer-events-none">
+                <Sparkles size={35} className="animate-pulse" />
+              </div>
+
               <div>
-                <h1 className="text-base font-black tracking-tight text-[#854D0E] uppercase leading-none">Kim Gia Bảo 24K</h1>
-                <span className="text-[9px] font-bold text-[#A16207]/75">MÈO BÉO CANH GIỮ HŨ VÀNG NHẪN TRƠN</span>
-              </div>
-            </div>
-
-            <button
-              onClick={fetchPrices}
-              disabled={isLoading}
-              className="p-1 px-2.5 rounded-xl bg-white hover:bg-amber-50 border border-[#FDE68A] text-[#854D0E] hover:scale-105 active:scale-95 transition-all text-[9px] font-bold flex items-center gap-1 cursor-pointer"
-            >
-              <RefreshCcw size={9} className={isLoading ? "animate-spin" : ""} />
-              <span>Cập nhật</span>
-            </button>
-          </div>
-
-          {/* Portfolio Net Worth Box Widget - Sleek Interface style */}
-          <div className="bg-[#FEF3C7] text-[#92400E] rounded-2.5xl p-3 px-4 shadow-sm flex items-center justify-between relative overflow-hidden border border-[#FDE68A]">
-            {/* Sparkles decoration background */}
-            <div className="absolute right-2 top-2 text-[#F59E0B] opacity-15 pointer-events-none">
-              <Sparkles size={35} className="animate-pulse" />
-            </div>
-
-            <div>
-              <span className="text-[9px] uppercase tracking-wider block font-bold text-[#A16207]">
-                Két Nhẫn Kim Gia Bảo 24K
-              </span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-xl font-black font-mono tracking-tight text-[#854D0E]">
-                  {portfolioSummary.currentValue.toFixed(2)}
+                <span className="text-[9px] uppercase tracking-wider block font-bold text-[#A16207]">
+                  Két Nhẫn Kim Gia Bảo 24K
                 </span>
-                <span className="text-[10px] font-bold text-[#A16207]">triệu đ</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-black font-mono tracking-tight text-[#854D0E]">
+                    {portfolioSummary.currentValue.toFixed(2)}
+                  </span>
+                  <span className="text-[10px] font-bold text-[#A16207]">triệu đ</span>
+                </div>
+                <span className="text-[9px] text-[#A16207]/80 block mt-0.5 font-semibold">
+                  Sở hữu: <strong className="text-[#854D0E] font-mono text-[10px] font-bold">{portfolioSummary.totalQuantity.toFixed(1)} chỉ</strong>
+                </span>
               </div>
-              <span className="text-[9px] text-[#A16207]/80 block mt-0.5 font-semibold">
-                Sở hữu: <strong className="text-[#854D0E] font-mono text-[10px] font-bold">{portfolioSummary.totalQuantity.toFixed(1)} chỉ</strong>
-              </span>
-            </div>
 
-            <div className="text-right z-10 shrink-0">
-              <span className="text-[8px] uppercase tracking-wider block text-[#A16207]/80 mb-0.5 font-bold">Lũy kế lời lỗ</span>
-              <div className={`p-1 px-2.5 rounded-lg font-bold flex items-center gap-1 text-[10px] ${
-                portfolioSummary.totalTransactions === 0
-                  ? "bg-stone-200/50 text-stone-500"
-                  : isProfit 
-                    ? "bg-emerald-100 text-emerald-800" 
-                    : "bg-rose-100 text-rose-800"
-              }`}>
-                {portfolioSummary.totalTransactions === 0 ? (
-                  <span>0đ</span>
-                ) : (
-                  <>
-                    <span className="font-mono font-black">
-                      {isProfit ? "+" : "-"}
-                      {Math.abs(portfolioSummary.totalProfit).toFixed(1)}Tr ({isProfit ? "+" : "-"}
-                      {portfolioSummary.profitPercentage.toFixed(0)}%)
-                    </span>
-                  </>
-                )}
+              <div className="text-right z-10 shrink-0">
+                <span className="text-[8px] uppercase tracking-wider block text-[#A16207]/80 mb-0.5 font-bold">Lũy kế lời lỗ</span>
+                <div className={`p-1 px-2.5 rounded-lg font-bold flex items-center gap-1 text-[10px] ${
+                  portfolioSummary.totalTransactions === 0
+                    ? "bg-stone-200/50 text-stone-500"
+                    : isProfit 
+                      ? "bg-emerald-100 text-emerald-800" 
+                      : "bg-rose-100 text-rose-800"
+                }`}>
+                  {portfolioSummary.totalTransactions === 0 ? (
+                    <span>0đ</span>
+                  ) : (
+                    <>
+                      <span className="font-mono font-black">
+                        {isProfit ? "+" : "-"}
+                        {Math.abs(portfolioSummary.totalProfit).toFixed(1)}Tr ({isProfit ? "+" : "-"}
+                        {portfolioSummary.profitPercentage.toFixed(0)}%)
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -492,151 +511,135 @@ export default function App() {
           
           {/* Animated Golden Cat Representative above */}
           <section className="bg-gradient-to-b from-[#FFFDF0] to-transparent pt-3 pb-2 select-none border-b border-[#FFFBEB]">
-            <GoldCat 
-              portfolio={portfolioSummary} 
-              todayChange={assetsChangeToday} 
-              onPoke={() => {}} 
-            />
+            <div className="max-w-7xl mx-auto w-full px-4">
+              <GoldCat 
+                portfolio={portfolioSummary} 
+                todayChange={assetsChangeToday} 
+                onPoke={() => {}} 
+              />
+            </div>
           </section>
 
           {/* Dynamic render components inside Tabs */}
-          <section className="px-3 py-1">
+          <section className="px-3 py-3">
             {activeTab === "vault" && (
-              <>
-                <VaultForm prices={prices} onAddTransaction={handleAddTransaction} />
-                <AlertCenter
-                  currentValue={portfolioSummary.currentValue}
-                  lastNotifiedValue={lastNotifiedValue}
-                  setLastNotifiedValue={setLastNotifiedValue}
-                  triggerMockFluctuation={triggerMockFluctuation}
-                  onClearHistory={handleClearHistory}
-                  notificationHistory={notificationHistory}
-                  threshold={threshold}
-                  setThreshold={setThreshold}
-                  permissionStatus={permissionStatus}
-                  onRequestPermission={handleRequestPermission}
-                />
-                <GoldVaultList 
-                  transactions={transactions} 
-                  prices={prices} 
-                  onDeleteTransaction={handleDeleteTransaction} 
-                />
-              </>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto w-full px-1">
+                {/* Left side actions and configuration (Takes 5 out of 12 columns) */}
+                <div className="lg:col-span-5 space-y-4">
+                  <VaultForm prices={prices} onAddTransaction={handleAddTransaction} />
+                  <AlertCenter
+                    currentValue={portfolioSummary.currentValue}
+                    lastNotifiedValue={lastNotifiedValue}
+                    setLastNotifiedValue={setLastNotifiedValue}
+                    triggerMockFluctuation={triggerMockFluctuation}
+                    onClearHistory={handleClearHistory}
+                    notificationHistory={notificationHistory}
+                    threshold={threshold}
+                    setThreshold={setThreshold}
+                    permissionStatus={permissionStatus}
+                    onRequestPermission={handleRequestPermission}
+                  />
+                </div>
+                {/* Right side transactions list (Takes 7 out of 12 columns) */}
+                <div className="lg:col-span-7">
+                  <GoldVaultList 
+                    transactions={transactions} 
+                    prices={prices} 
+                    onDeleteTransaction={handleDeleteTransaction} 
+                  />
+                </div>
+              </div>
             )}
 
             {activeTab === "market" && (
-              <>
-                <GoldPriceChart prices={prices} onModifyPrice={handleModifyPrice} />
-                
-                {/* News sector widget */}
-                <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm max-w-md mx-auto my-3">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 mb-3">
-                    <Newspaper size={13} className="text-amber-500 shrink-0" />
-                    <span>Tin Nóng Sổ Vàng</span>
-                  </h4>
-                  <div className="space-y-3">
-                    {news.map((item) => (
-                      <div key={item.id} className="text-xs pb-2.5 border-b border-slate-100 last:border-0 last:pb-0">
-                        <div className="flex justify-between items-center text-[10px] text-slate-400 mb-1 font-medium">
-                          <span>{item.source} • {item.time}</span>
-                          <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold ${
-                            item.sentiment === "positive" 
-                              ? "bg-emerald-50 text-emerald-600" 
-                              : "bg-slate-100 text-slate-500"
-                          }`}>
-                            {item.sentiment === "positive" ? "Tín hiệu Tốt" : "Nhận định"}
-                          </span>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto w-full px-1">
+                {/* Left side: Golden interactive chart (Takes 7 columns) */}
+                <div className="lg:col-span-7">
+                  <GoldPriceChart prices={prices} onModifyPrice={handleModifyPrice} />
+                </div>
+                {/* Right side: hot news list (Takes 5 columns) */}
+                <div className="lg:col-span-5">
+                  <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm w-full mx-auto my-4 lg:my-4">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 mb-3">
+                      <Newspaper size={13} className="text-amber-500 shrink-0" />
+                      <span>Tin Nóng Sổ Vàng</span>
+                    </h4>
+                    <div className="space-y-3">
+                      {news.map((item) => (
+                        <div key={item.id} className="text-xs pb-2.5 border-b border-slate-100 last:border-0 last:pb-0">
+                          <div className="flex justify-between items-center text-[10px] text-slate-400 mb-1 font-medium">
+                            <span>{item.source} • {item.time}</span>
+                            <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold ${
+                              item.sentiment === "positive" 
+                                ? "bg-emerald-50 text-emerald-600" 
+                                : "bg-slate-100 text-slate-500"
+                            }`}>
+                              {item.sentiment === "positive" ? "Tín hiệu Tốt" : "Nhận định"}
+                            </span>
+                          </div>
+                          <h5 className="font-bold text-slate-700 leading-normal hover:text-amber-600 cursor-pointer transition-colors">
+                            {item.title}
+                          </h5>
                         </div>
-                        <h5 className="font-bold text-slate-700 leading-normal hover:text-amber-600 cursor-pointer transition-colors">
-                          {item.title}
-                        </h5>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </>
+              </div>
             )}
 
             {activeTab === "ai" && (
-              <GoldChatbot portfolio={portfolioSummary} />
+              <div className="max-w-4xl mx-auto w-full px-2">
+                <GoldChatbot portfolio={portfolioSummary} />
+              </div>
             )}
           </section>
         </main>
 
         {/* Modern Web App Navigation Dock - Sticky Bottom */}
-        <nav className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-3 px-6 flex justify-around items-center z-40 shadow-md mt-auto">
-          
-          <button
-            onClick={() => setActiveTab("vault")}
-            className={`flex flex-col items-center gap-1 py-1.5 px-5 rounded-2xl transition-all cursor-pointer ${
-              activeTab === "vault"
-                ? "bg-amber-400 text-[#854D0E] font-bold shadow-xs scale-105"
-                : "text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            <Wallet size={18} className={activeTab === "vault" ? "stroke-[2.5]" : "stroke-[1.8]"} />
-            <span className="text-[10px] font-bold tracking-tight">Két vàng</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("market")}
-            className={`flex flex-col items-center gap-1 py-1.5 px-5 rounded-2xl transition-all cursor-pointer ${
-              activeTab === "market"
-                ? "bg-amber-400 text-[#854D0E] font-bold shadow-xs scale-105"
-                : "text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            <TrendingUp size={18} className={activeTab === "market" ? "stroke-[2.5]" : "stroke-[1.8]"} />
-            <span className="text-[10px] font-bold tracking-tight">Thị trường</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("ai")}
-            className={`flex flex-col items-center gap-1 py-1.5 px-5 rounded-2xl transition-all cursor-pointer relative ${
-              activeTab === "ai"
-                ? "bg-amber-400 text-[#854D0E] font-bold shadow-xs scale-105"
-                : "text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            {/* Tiny live AI notification pulse dot */}
-            {activeTab !== "ai" && (
-              <span className="absolute top-1 right-7 w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping" />
-            )}
-            <MessageSquare size={18} className={activeTab === "ai" ? "stroke-[2.5]" : "stroke-[1.8]"} />
-            <span className="text-[10px] font-bold tracking-tight">Hỏi Mèo Béo</span>
-          </button>
-
-        </nav>
-      </div>
-
-      {/* Absolute In-App Floating Toasts overlay stack */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-xs px-4 pointer-events-none flex flex-col gap-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`pointer-events-auto p-3.5 rounded-2xl shadow-xl border flex gap-3 transition-all duration-300 animate-bounce-short ${
-              toast.type === "up"
-                ? "bg-[#ECFDF5] border-emerald-200 text-emerald-900"
-                : "bg-[#FFF1F2] border-rose-200 text-rose-900"
-            }`}
-          >
-            <div className="text-lg">
-              {toast.type === "up" ? "📈" : toast.id === "warn-empty" ? "⚠️" : "📉"}
-            </div>
-            <div className="flex-1">
-              <h5 className="font-bold text-[11px] leading-tight flex items-center gap-1">
-                <span>{toast.title}</span>
-              </h5>
-              <p className="text-[9px] mt-1 text-slate-600 leading-normal font-medium">{toast.description}</p>
-            </div>
+        <nav className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-3 px-6 flex justify-around items-center z-40 shadow-md mt-auto border-t border-[#FDE68A]/50">
+          <div className="max-w-2xl mx-auto w-full flex justify-around items-center">
             <button
-              onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-              className="text-[10px] font-bold shrink-0 text-slate-400 hover:text-slate-700 self-start p-0.5 cursor-pointer"
+              onClick={() => setActiveTab("vault")}
+              className={`flex flex-col items-center gap-1 py-1.5 px-5 rounded-2xl transition-all cursor-pointer ${
+                activeTab === "vault"
+                  ? "bg-amber-400 text-[#854D0E] font-bold shadow-xs scale-105"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
             >
-              ✕
+              <Wallet size={18} className={activeTab === "vault" ? "stroke-[2.5]" : "stroke-[1.8]"} />
+              <span className="text-[10px] font-bold tracking-tight">Két vàng</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("market")}
+              className={`flex flex-col items-center gap-1 py-1.5 px-5 rounded-2xl transition-all cursor-pointer ${
+                activeTab === "market"
+                  ? "bg-amber-400 text-[#854D0E] font-bold shadow-xs scale-105"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              <TrendingUp size={18} className={activeTab === "market" ? "stroke-[2.5]" : "stroke-[1.8]"} />
+              <span className="text-[10px] font-bold tracking-tight">Thị trường</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("ai")}
+              className={`flex flex-col items-center gap-1 py-1.5 px-5 rounded-2xl transition-all cursor-pointer relative ${
+                activeTab === "ai"
+                  ? "bg-amber-400 text-[#854D0E] font-bold shadow-xs scale-105"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              {/* Tiny live AI notification pulse dot */}
+              {activeTab !== "ai" && (
+                <span className="absolute top-1 right-7 w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping" />
+              )}
+              <MessageSquare size={18} className={activeTab === "ai" ? "stroke-[2.5]" : "stroke-[1.8]"} />
+              <span className="text-[10px] font-bold tracking-tight">Hỏi Mèo Béo</span>
             </button>
           </div>
-        ))}
+        </nav>
       </div>
 
     </div>
