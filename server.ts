@@ -9,7 +9,7 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Mount BTMH serverless gold-prices API locally
+  // Mount VnExpress gold-prices API locally
   app.get("/api/gold-prices", (req: Request, res: Response) => {
     goldPricesHandler(req, res).catch((err) => {
       console.error("Local API Gold Prices error:", err);

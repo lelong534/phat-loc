@@ -45,27 +45,27 @@ export default async function handler(req: Request, res: Response) {
   // Nhẫn tròn Kim Gia Bảo 24k (represented by DOJI code): Buy 126.4M, Sell 127.6M
   let calculatedPrices: GoldPriceMap = {
     sjc: {
-      name: "SJC Bảo Tín Mạnh Hải",
+      name: "SJC Toàn Quốc",
       buy: 143.0,
       sell: 145.0,
       yesterdayChange: 2.5,
-      code: "SJC-BTMH",
+      code: "SJC-VNE",
       history: [136.5, 137.2, 137.8, 138.0, 137.5, 138.2, 145.0],
     },
     doji: {
-      name: "Nhẫn tròn ép vỉ Kim Gia Bảo 24K",
+      name: "Nhẫn tròn Kim Gia Bảo 24K",
       buy: 126.4,
       sell: 127.6,
       yesterdayChange: 1.8,
-      code: "KGB-BTMH",
+      code: "KGB-VNE",
       history: [120.1, 120.8, 121.2, 121.5, 121.0, 121.6, 127.6],
     },
     pnj: {
-      name: "Nhẫn tròn 999.9 BTMH",
+      name: "Nhẫn trơn 24K PNJ",
       buy: 123.5,
       sell: 124.7,
       yesterdayChange: 1.5,
-      code: "BT24K-BTMH",
+      code: "PNJ-VNE",
       history: [117.4, 118.1, 118.5, 118.8, 118.3, 118.9, 124.7],
     },
   };
@@ -124,7 +124,7 @@ export default async function handler(req: Request, res: Response) {
          const prevSegment = html.slice(Math.max(0, h3Start - 1200), h3Start);
          const imgMatch = prevSegment.match(/data-src="([^"]+)"/i) || 
                           prevSegment.match(/src="([^"]+)"/i);
-         const image = imgMatch ? imgMatch[1] : "https://baotinmanhhai.vn/uploads/logo/logo-btmh.png";
+         const image = imgMatch ? imgMatch[1] : "https://images.unsplash.com/photo-1610375228911-c4abbdd27355?w=500&h=300&fit=crop";
 
          // Look forward around 1200 characters for description
          const nextSegment = html.slice(h3End + 5, h3End + 1200);
@@ -268,8 +268,8 @@ export default async function handler(req: Request, res: Response) {
       title: "Nhẫn tròn ép vỉ Kim Gia Bảo 24K - 1 chỉ",
       priceRaw: formattedVnd,
       priceMin: kgbOneChiPriceMillion,
-      url: "https://baotinmanhhai.vn/vi/vang-tich-luy",
-      image: "https://baotinmanhhai.vn/uploads/logo/logo-btmh.png"
+      url: "https://vnexpress.net/chu-de/gia-vang-1403",
+      image: "https://images.unsplash.com/photo-1610375228911-c4abbdd27355?w=500&h=300&fit=crop"
     }
   ];
 
@@ -287,11 +287,11 @@ export default async function handler(req: Request, res: Response) {
     news: extractedNews.length > 0 ? extractedNews : [
       {
         id: "vne-fallback-1",
-        title: "Giá vàng miếng đảo chiều tăng mạnh, người dân Hà Nội nhộn nhịp mua sắm",
+        title: "Giá vàng miếng đảo chiều tăng mạnh, người dân nhộn nhịp mua sắm",
         time: "Hôm nay",
         source: "VnExpress",
         sentiment: "positive",
-        image: "https://baotinmanhhai.vn/uploads/logo/logo-btmh.png",
+        image: "https://images.unsplash.com/photo-1610375228911-c4abbdd27355?w=500&h=300&fit=crop",
         description: "Bản tin giá vàng cập nhật hôm nay phản ánh sức nóng thị trường nhẫn trơn 24k Kim Gia Bảo ép vỉ 1 chỉ đầu ngày."
       }
     ]

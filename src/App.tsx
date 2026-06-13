@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { GoldTransaction, GoldPriceMap, GoldPortfolioSummary, GoldTypeCode, GoldNews, getApiUrl } from "./types";
-import { fetchLiveGoldData } from "./lib/btmhScraper";
+import { fetchLiveGoldData } from "./lib/goldScraper";
 import GoldCat from "./components/GoldCat";
 import VaultForm from "./components/VaultForm";
 import GoldVaultList from "./components/GoldVaultList";
@@ -48,27 +48,27 @@ function playCoinSound() {
 // Robust INITIAL fallback mock price map based on real June 2026 indexes
 const DEFAULT_PRICES: GoldPriceMap = {
   sjc: {
-    name: "SJC Bảo Tín Mạnh Hải",
+    name: "SJC Toàn Quốc",
     buy: 83.0,
     sell: 85.0,
     yesterdayChange: 0.15,
-    code: "SJC-BTMH",
+    code: "SJC-VNE",
     history: [82.1, 82.3, 82.8, 83.0, 83.1, 82.9, 83.0]
   },
   doji: {
-    name: "Nhẫn trơn Kim Gia Bảo 24K",
+    name: "Nhẫn tròn Kim Gia Bảo 24K",
     buy: 75.5,
     sell: 76.7,
     yesterdayChange: 0.25,
-    code: "KGB-BTMH",
+    code: "KGB-VNE",
     history: [74.5, 74.8, 75.1, 75.3, 75.5, 75.3, 75.5]
   },
   pnj: {
-    name: "Nhẫn tròn 999.9 BTMH",
+    name: "Nhẫn trơn 24K PNJ",
     buy: 75.2,
     sell: 76.4,
     yesterdayChange: 0.2,
-    code: "BT24K-BTMH",
+    code: "PNJ-VNE",
     history: [74.2, 74.5, 74.8, 75.0, 75.2, 75.0, 75.2]
   }
 };
@@ -399,7 +399,7 @@ export default function App() {
           new Notification(title, {
             body: `${description} Đạt ${portfolioSummary.currentValue.toFixed(2)}Trđ meow!`,
             tag: "gold-vault-change",
-            icon: "https://baotinmanhhai.vn/favicon.ico"
+            icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f431.png"
           });
         } catch (err) {
           console.warn("System Notification trigger failed:", err);
@@ -438,7 +438,7 @@ export default function App() {
             new Notification("🐱 Mèo Béo đã khóa hũ vàng an toàn!", {
               body: `Tạm biệt Sen! Tổng trị giá hũ vàng nhẫn 24K hiện tại là ${portfolioSummary.currentValue.toFixed(2)} triệu đ. Mèo béo ôm hũ ngủ giữ của cẩn mật nhé meow~`,
               tag: "gold-vault-quit-lock",
-              icon: "https://baotinmanhhai.vn/favicon.ico"
+              icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f431.png"
             });
           } catch (e) {
             console.warn("Could not fire close notification:", e);

@@ -70,7 +70,7 @@ export default function GoldChatbot({ portfolio }: GoldChatbotProps) {
       if (norm.includes("pate") || norm.includes("ăn") || norm.includes("thưởng") || norm.includes("béo")) {
         const replies = [
           `Meowww! Nghe nhắc tới pate tôm cua hoàng đế là râu ria Trẫm vểnh lên rạo rực như hũ vàng! 🐱🍴 Sen đang tủ sẵn ${hasInvestment && isProfit ? `lãi ròng +${profitStr} triệu đồng` : "nhiều vàng"} thì trích nhẹ vài chục k lẻ mua pate ngon thượng hạng cho Trẫm tẩm bổ đi nhe. Trẫm hứa sẽ ôm chân Sen nịnh hót suốt ngày meow! 🐾🐟`,
-          `Pate tôm, pate cá hồi tươi ngọt lịm? 🍤 Trẫm chỉ quen ăn hàng xịn thui dẫu Trẫm hơi béo ú lười biếng một tí nà. Thưởng pate bồi dưỡng Trẫm đi Sen, Trẫm cầu phúc tinh tú cho ngày mai giá nhẫn tròn Kim Gia Bảo Bảo Tín Mạnh Hải phi mã vù vù meow!`
+          `Pate tôm, pate cá hồi tươi ngọt lịm? 🍤 Trẫm chỉ quen ăn hàng xịn thui dẫu Trẫm hơi béo ú lười biếng một tí nà. Thưởng pate bồi dưỡng Trẫm đi Sen, Trẫm cầu phúc tinh tú cho ngày mai giá nhẫn tròn Kim Gia Bảo phi mã vù vù meow!`
         ];
         return replies[Math.floor(Math.random() * replies.length)] + portfolioSentence;
       }
