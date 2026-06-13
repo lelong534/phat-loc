@@ -46,38 +46,93 @@ export default function GoldChatbot({ portfolio }: GoldChatbotProps) {
     setInputText("");
     setIsLoading(true);
 
-    try {
-      const response = await fetch(getApiUrl("/api/chat"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: textToSend,
-          goldPortfolio: portfolio
-        })
-      });
+    // Client-side witty feline generator
+    const generateCatReply = (message: string, summary: GoldPortfolioSummary): string => {
+      const norm = message.toLowerCase().trim();
+      const hasInvestment = summary.totalQuantity > 0;
+      const qtyStr = summary.totalQuantity.toFixed(2);
+      const profitStr = summary.totalProfit.toFixed(2);
+      const profitPctStr = summary.profitPercentage.toFixed(2);
+      const isProfit = summary.totalProfit >= 0;
 
-      const data = await response.json();
-      
+      let portfolioSentence = "";
+      if (hasInvestment) {
+        if (isProfit) {
+          portfolioSentence = `\n\n(Trẫm dòm lén sổ vàng: Sen đang có ${qtyStr} chỉ nhẫn tròn tích lũy, mua gốc ${summary.totalInvested.toFixed(2)} triệu VNĐ và hiện đang lãi vàng thơm bơ +${profitStr} triệu đồng (${profitPctStr}%) đó nha meow~ 🐾✨)`;
+        } else {
+          portfolioSentence = `\n\n(Trẫm hé lộ sổ vàng: Sen đang gồng lỗ tí nị ${profitStr} triệu đồng cho ${qtyStr} chỉ nhẫn tròn. Nhưng xá gì, gom giữ nhẫn tròn 24K lâu dài lo gì lạm phát meow~ 🐈📈)`;
+        }
+      } else {
+        portfolioSentence = `\n\n(Ôi meow! Két vàng đang trống trơn nha Sen ơi! Mau cất vài chỉ nhẫn trơn Kim Gia Bảo vào tủ để Trẫm có gối mềm kê đầu nằm ngủ đi nào! 🐱💰)`;
+      }
+
+      // Check key phrases
+      if (norm.includes("pate") || norm.includes("ăn") || norm.includes("thưởng") || norm.includes("béo")) {
+        const replies = [
+          `Meowww! Nghe nhắc tới pate tôm cua hoàng đế là râu ria Trẫm vểnh lên rạo rực như hũ vàng! 🐱🍴 Sen đang tủ sẵn ${hasInvestment && isProfit ? `lãi ròng +${profitStr} triệu đồng` : "nhiều vàng"} thì trích nhẹ vài chục k lẻ mua pate ngon thượng hạng cho Trẫm tẩm bổ đi nhe. Trẫm hứa sẽ ôm chân Sen nịnh hót suốt ngày meow! 🐾🐟`,
+          `Pate tôm, pate cá hồi tươi ngọt lịm? 🍤 Trẫm chỉ quen ăn hàng xịn thui dẫu Trẫm hơi béo ú lười biếng một tí nà. Thưởng pate bồi dưỡng Trẫm đi Sen, Trẫm cầu phúc tinh tú cho ngày mai giá nhẫn tròn Kim Gia Bảo Bảo Tín Mạnh Hải phi mã vù vù meow!`
+        ];
+        return replies[Math.floor(Math.random() * replies.length)] + portfolioSentence;
+      }
+
+      if (norm.includes("mua") || norm.includes("tích lũy") || norm.includes("holding") || norm.includes("gom")) {
+        const replies = [
+          `Bí quyết rủng rỉnh của Trẫm: gom nhẫn tròn trơn ép vỉ lúc này là quốc sách đó Sen! Tích tiểu thành đại, mỗi tháng trích 5-10% lương mua đều đặn cất tủ. Nhẫn tròn vừa bền tốt chống rỉ sét ráo khí ẩm, lại siêu dễ chia nhỏ thanh khoản meow! 🐾✨`,
+          `Gom đi gom đi Sen ơi meow! Cất thật nhiều nhẫn trơn Kim Gia Bảo về két sắt để Trẫm rọ rạy canh canh cho ấm bụng béo. Mua vàng hôm nay, sắm lâu đài cát lộng lẫy cho Trẫm ngủ ngày mai nhe! 🏰💰`
+        ];
+        return replies[Math.floor(Math.random() * replies.length)] + portfolioSentence;
+      }
+
+      if (norm.includes("bán") || norm.includes("chốt lời")) {
+        const replies = [
+          `Hả, Sen béo định bán vàng nhẫn ư meow? Thôi đừng bán vội á! Trừ phi Sen túng pate tôm hùm nặng quá thì bán nhẹ 1 chỉ mua pate cho Trẫm bồi bổ dăm hôm meow~ 🐱🍣 Còn lại cứ kiên định ôm giữ nhe, nhẫn tròn trơn là lá chắn hộ mệnh vượt lạm phát lâu dài đó!`,
+          `Meow! Trẫm nằm bẹp dí đè lên nắp két sắt rồi, Sen hòng mà bán được nhe! Nhẫn vàng ta tích tụ tài khí linh thiêng bao ngày qua, Sen phải giữ cẩn mật. Chờ tài sản nở hoa to đùng hoặc cần việc đại sự hẵng tính meow! 🚀🐾`
+        ];
+        return replies[Math.floor(Math.random() * replies.length)] + portfolioSentence;
+      }
+
+      if (norm.includes("dự báo") || norm.includes("tương lai") || norm.includes("xu hướng") || norm.includes("lên") || norm.includes("xuống") || norm.includes("tăng") || norm.includes("giảm") || norm.includes("biến động")) {
+        const replies = [
+          `Theo quẻ bói ngũ hành móng vuốt của Trẫm: Nhẫn trơn KGB luôn có xu thế tăng bền vững theo đồ thị hình sườn núi dốc dài hạn. Vàng nhẫn 24K bây giờ là vua giữ của rồi, ba cái tin đồn lướt sóng ngắn hạn kệ nó đi Sen béo meow! 📈🐈`,
+          `Vũ trụ mách bảo Trẫm rằng giá vàng nhẫn trong dài hạn sẽ lấp lánh như lông béo bơ vàng của Trẫm vậy meow! Thi thoảng thị trường có nhúc nhích rung lắc vài chỉ pate nhưng cứ HOLD vững tay chèo là thành đại gia mèo hết nhe Sen! 🪙🚀`
+        ];
+        return replies[Math.floor(Math.random() * replies.length)] + portfolioSentence;
+      }
+
+      if (norm.includes("lâu đài") || norm.includes("nhà") || norm.includes("cát")) {
+        return `🏰 Ôi lâu đài cát hoàng gia mơ ước của Trẫm! Trẫm thèm khát có một tòa lâu đài bằng cát mịn bự chảng có nệm nhung béo mượt thêu chỉ vàng óng ánh và bát pate cua hoàng đế lụt lội. Sen tích đủ lên mốc 10 chỉ vàng đi rồi sắm sửa bồi đắp lâu đài cát thưởng cho Trẫm nha meow! 🐾🐱` + portfolioSentence;
+      }
+
+      if (norm.includes("giàu") || norm.includes("tiền") || norm.includes("tỷ phú")) {
+        return `Phương pháp làm giàu bí truyền từ loài mèo quý tộc cổ đại: cắt giảm bớt trà sữa bùa chú lại, dồn tiền mua nhẫn tròn ép vi 24K gửi Trẫm giữ két nhe meow! 🐱💰 Người khôn giữ nhẫn trơn luôn rủng rỉnh lúc kinh tế bão bùng lạm phát. Chăm gom đi Sen sẽ mau làm đại gia cung phụng Trẫm meow!` + portfolioSentence;
+      }
+
+      if (norm.includes("chào") || norm.includes("hello") || norm.includes("hi") || norm.includes("mèo") || norm.includes("ta") || norm.includes("trẫm")) {
+        return `Meow! Trẫm chào Sen thương mến nha~ Trẫm đang thư thải duỗi chân béo ú xoa chuông vàng kêu linh kinh kìa. Có câu hỏi đầu tư vàng nhẫn hay thắc mắc vĩ mô gì cần Trẫm gõ quẻ tinh tú soi đường dẫn lối meow? 🐾🐱✨` + portfolioSentence;
+      }
+
+      const randomFallbacks = [
+        `Meow~ Trẫm nghe lời Sen nói rồi nhe, rất có triết lý chiều sâu đó! Cơ mà Sen béo đã gom đủ lượng vàng tích lũy mong ước tuần này chưa? Cố gắng gom đều đặn hàng tuần, hàng tháng nhe Sen! 🐱✨`,
+        `Trẫm vừa kiểm tra bói toán tinh tú bằng móng béo: khuyên Sen nên vững tay giữ chặt nhẫn nhơn 24K vượt bão dông, tuyệt đối không lướt sóng nóng vội nha meow! 🐈📉`,
+        `Ưm... Trẫm hơi lười bấm quẻ sâu vĩ mô quá, nhưng nôm na là nhẫn trơn Kim Gia Bảo đang là chân á giữ của đời Sen béo meow! Xoa cằm béo của Trẫm một cái lấy hên đi cậu nhe! 🐾🪙`,
+        `Sen béo có hay tích vàng nhẫn tròn ép vỉ không? Trẫm cực chuộng nhẫn trơn vì chia nhỏ 2 chỉ, 5 chỉ siêu tiện, khi cần tiền mua pate mua hạt là lách một phát ra tiệm thanh khoản vèo vèo meow! 🍤🐱`
+      ];
+      return randomFallbacks[Math.floor(Math.random() * randomFallbacks.length)] + portfolioSentence;
+    };
+
+    // Chat reply process simulation
+    setTimeout(() => {
+      const catReplyText = generateCatReply(textToSend, portfolio);
       const catMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: "cat",
-        text: data.reply || "Meoww... Trẫm bị nghẹn pate cá thu gồi, Sen nói lại xem meow! 🐟🐾",
+        text: catReplyText,
         timestamp: new Date()
       };
 
       setMessages((prev) => [...prev, catMsg]);
-    } catch (err) {
-      console.error("Chat Error:", err);
-      const errorMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: "cat",
-        text: "Meowww... Sóng vũ trụ truyền tinh tú tới gậy thần tài đang chập chờn meow~ Cưng nựng Trẫm một cái bằng cách click bụng béo phía trên rồi thử lại sau nhen! 🐱✨",
-        timestamp: new Date()
-      };
-      setMessages((prev) => [...prev, errorMsg]);
-    } finally {
       setIsLoading(false);
-    }
+    }, 650); // Delightful organic delay feel
   };
 
   return (

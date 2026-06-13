@@ -61,7 +61,7 @@ export function getApiUrl(path: string): string {
                        window.location.hostname !== "::1";
   
   if (isCustomHost) {
-    return `https://ais-pre-nsrpe2fj3dygpx3kufcrfs-229900755055.asia-southeast1.run.app${path}`;
+    return `https://ais-dev-nsrpe2fj3dygpx3kufcrfs-229900755055.asia-southeast1.run.app${path}`;
   }
   return path;
 }

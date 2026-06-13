@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { GoldTransaction, GoldPriceMap, GoldPortfolioSummary, GoldTypeCode, GoldNews, getApiUrl } from "./types";
+import { fetchLiveGoldData } from "./lib/btmhScraper";
 import GoldCat from "./components/GoldCat";
 import VaultForm from "./components/VaultForm";
 import GoldVaultList from "./components/GoldVaultList";
@@ -249,36 +250,31 @@ export default function App() {
     localStorage.setItem("cute_gold_portfolio", JSON.stringify(transactions));
   }, [transactions]);
 
-  // Fetch true today prices from custom API route
+  // Fetch true today prices completely client-side via free CORS proxy
   const fetchPrices = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(getApiUrl("/api/gold-prices"));
-      if (response.ok) {
-        const data = await response.json();
-        if (data.prices) setPrices(data.prices);
-        if (data.news) setNews(data.news);
-        if (data.crawledProducts) setCrawledProducts(data.crawledProducts);
-        
-        // Dynamic success alert on active refresh
-        const successToast: InAppToast = {
-          id: `prices-sync-ok-${Date.now()}`,
-          title: "✨ Đã cập nhật giá mới nhất!",
-          description: "Thông tin hũ vàng được đồng bộ thành công với Bảo Tín Mạnh Hải!",
-          type: "up"
-        };
-        setToasts((prev) => [...prev, successToast]);
-        playCoinSound();
-      } else {
-        throw new Error(`Mã phản hồi ${response.status}`);
-      }
+      const data = await fetchLiveGoldData();
+      if (data.prices) setPrices(data.prices);
+      if (data.news) setNews(data.news);
+      if (data.crawledProducts) setCrawledProducts(data.crawledProducts);
+      
+      // Dynamic success alert on active refresh
+      const successToast: InAppToast = {
+        id: `prices-sync-ok-${Date.now()}`,
+        title: "✨ Đã cập nhật giá mới nhất!",
+        description: "Thông tin hũ vàng được đồng bộ thành công với Bảo Tín Mạnh Hải!",
+        type: "up"
+      };
+      setToasts((prev) => [...prev, successToast]);
+      playCoinSound();
     } catch (err: any) {
       console.warn("Failed to fetch fresh gold prices: ", err);
       
       const errorToast: InAppToast = {
         id: `prices-sync-error-${Date.now()}`,
-        title: "⚠️ Không thể kết nối máy chủ!",
-        description: "Không thể lấy thông tin giá vàng mới nhất. Vui lòng kiểm tra lại kết nối mạng.",
+        title: "⚠️ Không thể đồng bộ trực tiếp!",
+        description: "Không thể lấy thông tin giá vàng mới nhất qua trình duyệt. Hệ thống đang sử dụng giá mặc định.",
         type: "down"
       };
       setToasts((prev) => [...prev, errorToast]);
@@ -287,40 +283,35 @@ export default function App() {
     }
   };
 
-  // Run the manual force-test crawl to capture and view exact plain ring product lists from BTMH list URL
+  // Run the manual force-test crawl directly on the client side
   const handleTestCrawl = async () => {
     setIsTestCrawling(true);
     try {
-      const response = await fetch(getApiUrl("/api/test-crawl"));
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          if (data.resolvedPrices) setPrices(data.resolvedPrices);
-          if (data.allCrawledProducts) setCrawledProducts(data.allCrawledProducts);
-          
-          const totalCrawled = data.summary?.totalProductsCrawled || 0;
-          const ringCount = data.summary?.ringProductsCount || 0;
-          
-          const successToast: InAppToast = {
-            id: `test-crawl-ok-${Date.now()}`,
-            title: "🎉 Quét Live Thành Công!",
-            description: `Đã cập nhật từ Bảo Tín Mạnh Hải! Tìm thấy ${totalCrawled} sản phẩm, trong đó có ${ringCount} sản phẩm nhẫn trơn!`,
-            type: "up"
-          };
-          setToasts((prev) => [...prev, successToast]);
-          playCoinSound();
-        } else {
-          throw new Error(data.error || "Không có phản hồi thành công");
-        }
-      } else {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      const data = await fetchLiveGoldData();
+      if (data.prices) setPrices(data.prices);
+      if (data.crawledProducts) setCrawledProducts(data.crawledProducts);
+      
+      const totalCrawled = data.crawledProducts?.length || 0;
+      const ringCount = data.crawledProducts?.filter(p => 
+        p.title.toLowerCase().includes("nhẫn") || 
+        p.title.toLowerCase().includes("trơn") || 
+        p.title.toLowerCase().includes("kim gia bảo")
+      ).length || 0;
+      
+      const successToast: InAppToast = {
+        id: `test-crawl-ok-${Date.now()}`,
+        title: "🎉 Quét Live Thành Công!",
+        description: `Đã quét thành công từ Bảo Tín Mạnh Hải! Tìm thấy ${totalCrawled} sản phẩm, trong đó có ${ringCount} sản phẩm nhẫn trơn!`,
+        type: "up"
+      };
+      setToasts((prev) => [...prev, successToast]);
+      playCoinSound();
     } catch (err: any) {
-      console.warn("Test crawl call failed:", err);
+      console.warn("Client crawl failed:", err);
       const errorToast: InAppToast = {
         id: `test-crawl-error-${Date.now()}`,
-        title: "⚠️ Không thể kết nối máy chủ!",
-        description: "Tính năng Quét Live không khả dụng do không thể kết nối tới máy chủ.",
+        title: "⚠️ Lỗi quét trực tiếp!",
+        description: "Tính năng Quét Live không thành công qua trình duyệt hiện tại.",
         type: "down"
       };
       setToasts((prev) => [...prev, errorToast]);
@@ -597,24 +588,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Compact Gold rate info box */}
-          <div className="bg-[#FFFDF6] border border-amber-100/60 rounded-2xl p-3 text-[11px] text-stone-600 space-y-1.5 shadow-2xs">
-            <div className="flex justify-between items-center">
-              <span className="text-stone-400 font-semibold uppercase text-[9px] tracking-wider">Giá bán ra hôm nay</span>
-              <span className="font-black text-[#854D0E] font-mono">{(prices.doji.sell).toFixed(2)} Tr/Lượng</span>
-            </div>
-            <div className="flex justify-between items-center text-[10px] border-t border-amber-100/30 pt-1.5">
-              <span className="text-stone-400 font-semibold uppercase text-[9px] tracking-wider">Giá hôm qua</span>
-              <span className="text-stone-500 font-medium font-mono">{(prices.doji.sell - prices.doji.yesterdayChange).toFixed(2)} Tr/Lượng</span>
-            </div>
-            <div className="flex justify-between items-center text-[10px]">
-              <span className="text-stone-400 font-semibold uppercase text-[9px] tracking-wider">Biến động giá / chỉ</span>
-              <span className={`font-mono font-bold ${prices.doji.yesterdayChange >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                {prices.doji.yesterdayChange >= 0 ? "+" : ""}
-                {Math.abs(Math.round((prices.doji.yesterdayChange / 10) * 1000000)).toLocaleString("vi-VN")} đ
-              </span>
-            </div>
-          </div>
         </section>
 
         {/* COMPACT CAT MASCOT */}
