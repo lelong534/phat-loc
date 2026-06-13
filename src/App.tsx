@@ -7,7 +7,8 @@ import GoldVaultList from "./components/GoldVaultList";
 import GoldPriceChart from "./components/GoldPriceChart";
 import GoldChatbot from "./components/GoldChatbot";
 import { GoldNotificationItem } from "./components/AlertCenter";
-import { Wallet, TrendingUp, TrendingDown, RefreshCcw, BookOpen, MessageSquare, Newspaper, Sparkles, Smartphone } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, RefreshCcw, BookOpen, MessageSquare, Newspaper, Sparkles, Smartphone, X, ExternalLink } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 interface InAppToast {
   id: string;
@@ -104,6 +105,46 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isTestCrawling, setIsTestCrawling] = useState<boolean>(false);
   const [showManager, setShowManager] = useState<boolean>(false);
+  const [selectedNews, setSelectedNews] = useState<GoldNews | null>(null);
+  const [newsParagraphs, setNewsParagraphs] = useState<string[]>([]);
+  const [isNewsLoading, setIsNewsLoading] = useState<boolean>(false);
+
+  // Auto-fetch full article text upon popup selection
+  useEffect(() => {
+    if (!selectedNews) {
+      setNewsParagraphs([]);
+      return;
+    }
+
+    if (selectedNews.link) {
+      setIsNewsLoading(true);
+      setNewsParagraphs([]); // Clear previous text
+      fetch(`/api/article-content?url=${encodeURIComponent(selectedNews.link)}`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Chưa thể lấy nội dung chi tiết bài viết");
+          return res.json();
+        })
+        .then((data) => {
+          if (data && Array.isArray(data.paragraphs) && data.paragraphs.length > 0) {
+            setNewsParagraphs(data.paragraphs);
+          } else {
+            setNewsParagraphs([selectedNews.description || "Không tìm thấy nội dung bài viết."]);
+          }
+        })
+        .catch((err) => {
+          console.error("Lỗi tải bài viết:", err);
+          setNewsParagraphs([
+            selectedNews.description || "Không tìm thấy nội dung bài viết.",
+            "⚠️ Mèo Béo không thể kết nối tới máy chủ VnExpress hoặc bài đã bị ẩn, bạn vui lòng xem trực tiếp bằng nút liên kết nguồn bên dưới nhé meow!"
+          ]);
+        })
+        .finally(() => {
+          setIsNewsLoading(false);
+        });
+    } else {
+      setNewsParagraphs([selectedNews.description || "Không có chi tiết bài viết."]);
+    }
+  }, [selectedNews]);
 
   // Load Transactions from LocalStorage representing user's digital gold box
   const [transactions, setTransactions] = useState<GoldTransaction[]>(() => {
@@ -615,12 +656,11 @@ export default function App() {
 
             <div className="flex flex-col gap-3 divide-y divide-stone-100/50">
               {news.slice(0, 5).map((item, idx) => (
-                <a 
+                <button 
                   key={item.id || idx} 
-                  href={item.link || "https://vnexpress.net/chu-de/gia-vang-1403"} 
-                  target="_blank" 
-                  referrerPolicy="no-referrer"
-                  className="pt-3 first:pt-0 group flex gap-3 items-start hover:opacity-90 transition-opacity cursor-pointer text-left block"
+                  onClick={() => setSelectedNews(item)}
+                  type="button"
+                  className="pt-3 first:pt-0 group flex gap-3 items-start hover:opacity-90 transition-opacity cursor-pointer text-left w-full focus:outline-hidden"
                 >
                   {item.image && (
                     <img 
@@ -634,10 +674,22 @@ export default function App() {
                     <h4 className="text-[11px] font-bold text-stone-800 leading-snug group-hover:text-amber-800 transition-colors">
                       {item.title}
                     </h4>
-                    <p className="text-[9px] text-stone-400 mt-1 flex items-center gap-1.5 font-medium">
+                    <p className="text-[9px] text-stone-400 mt-1 flex flex-wrap items-center gap-1.5 font-medium">
                       <span>📰 {item.source || "VnExpress"}</span>
                       <span>•</span>
                       <span>{item.time || "Gần đây"}</span>
+                      {item.sentiment && (
+                        <>
+                          <span>•</span>
+                          <span className={`px-1.5 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-wide ${
+                            item.sentiment === 'positive' ? 'bg-emerald-50 text-emerald-700' :
+                            item.sentiment === 'negative' ? 'bg-rose-50 text-rose-700' :
+                            'bg-stone-50 text-stone-500'
+                          }`}>
+                            {item.sentiment === 'positive' ? '📈 Tốt' : item.sentiment === 'negative' ? '📉 Giảm' : '⚖️ Ổn định'}
+                          </span>
+                        </>
+                      )}
                     </p>
                     {item.description && (
                       <p className="text-[9px] text-stone-500 mt-1 line-clamp-2 leading-relaxed">
@@ -645,7 +697,7 @@ export default function App() {
                       </p>
                     )}
                   </div>
-                </a>
+                </button>
               ))}
             </div>
           </section>
@@ -704,6 +756,118 @@ export default function App() {
           </div>
         ))}
       </div>
+
+      {/* Interactive News Detail Popup Modal */}
+      <AnimatePresence>
+        {selectedNews && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop with blur */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedNews(null)}
+              className="absolute inset-0 bg-stone-900/60 backdrop-blur-xs cursor-pointer"
+            />
+
+            {/* Modal Body Container */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-sm bg-white border border-stone-100 rounded-3xl overflow-hidden shadow-2xl flex flex-col z-10 max-h-[85vh] text-left"
+            >
+              {/* Close Button overlay */}
+              <button
+                type="button"
+                onClick={() => setSelectedNews(null)}
+                className="absolute top-3 right-3 z-20 bg-stone-900/60 hover:bg-stone-900/80 text-white rounded-full p-1.5 transition-colors cursor-pointer"
+              >
+                <X size={15} />
+              </button>
+
+              {/* News Thumbnail Image */}
+              {selectedNews.image && (
+                <div className="w-full h-40 overflow-hidden bg-stone-100 relative">
+                  <img
+                    src={selectedNews.image}
+                    alt={selectedNews.title}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
+                  <span className="absolute bottom-2 left-3 text-white text-[10px] font-black uppercase tracking-wider bg-red-600/80 px-2 py-0.5 rounded">
+                    VnExpress
+                  </span>
+                </div>
+              )}
+
+              {/* Information body with scroll */}
+              <div className="p-5 flex-1 overflow-y-auto space-y-3">
+                <div className="flex flex-wrap gap-2 items-center text-[10px] text-stone-400 font-bold">
+                  <span>📰 {selectedNews.source || "VnExpress"}</span>
+                  <span>•</span>
+                  <span>{selectedNews.time || "Gần đây"}</span>
+                  {selectedNews.sentiment && (
+                    <span className={`px-2 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-wide ${
+                      selectedNews.sentiment === 'positive' ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' :
+                      selectedNews.sentiment === 'negative' ? 'bg-rose-50 text-rose-800 border border-rose-100' :
+                      'bg-stone-50 text-stone-600 border border-stone-100'
+                    }`}>
+                      {selectedNews.sentiment === 'positive' ? '📈 Tốt cho thị trường' : selectedNews.sentiment === 'negative' ? '📉 Giá giảm' : '⚖️ Ổn định'}
+                    </span>
+                  )}
+                </div>
+
+                <h3 className="text-xs font-black text-stone-900 leading-snug tracking-tight">
+                  {selectedNews.title}
+                </h3>
+
+                {isNewsLoading ? (
+                  <div className="space-y-2.5 pt-2 animate-pulse">
+                    <div className="h-2 bg-stone-200 rounded-full w-full"></div>
+                    <div className="h-2 bg-stone-200 rounded-full w-11/12"></div>
+                    <div className="h-2 bg-stone-200 rounded-full w-[85%]"></div>
+                    <div className="h-2 bg-stone-200 rounded-full w-full"></div>
+                    <div className="h-2 bg-stone-200 rounded-full w-2/3"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-3 pt-1 max-h-[250px] overflow-y-auto">
+                    {newsParagraphs.map((para, pIdx) => (
+                      <p key={pIdx} className="text-[10px] text-stone-600 leading-relaxed font-normal">
+                        {para}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Action buttons footer */}
+              <div className="p-4 border-t border-stone-100 bg-stone-50 flex gap-2.5">
+                {selectedNews.link && (
+                  <a
+                    href={selectedNews.link}
+                    target="_blank"
+                    rel="no-referrer"
+                    referrerPolicy="no-referrer"
+                    className="flex-1 bg-white hover:bg-stone-150 border border-stone-200 text-stone-700 text-[11px] font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <span>Xem bài báo gốc</span>
+                    <ExternalLink size={12} />
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedNews(null)}
+                  className="flex-1 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-[11px] font-bold py-2.5 px-3 rounded-xl text-center transition-colors cursor-pointer"
+                >
+                  Đóng lại
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

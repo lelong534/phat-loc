@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import goldPricesHandler from "./api/gold-prices";
+import articleContentHandler from "./api/article-content";
 
 async function startServer() {
   const app = express();
@@ -14,6 +15,14 @@ async function startServer() {
     goldPricesHandler(req, res).catch((err) => {
       console.error("Local API Gold Prices error:", err);
       res.status(500).json({ error: "Thất bại khi lấy giá vàng" });
+    });
+  });
+
+  // Mount Article Content Reader API locally
+  app.get("/api/article-content", (req: Request, res: Response) => {
+    articleContentHandler(req, res).catch((err) => {
+      console.error("Local API Article Content error:", err);
+      res.status(500).json({ error: "Thất bại khi lấy chi tiết bài viết" });
     });
   });
 
