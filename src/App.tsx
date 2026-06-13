@@ -49,27 +49,27 @@ function playCoinSound() {
 const DEFAULT_PRICES: GoldPriceMap = {
   sjc: {
     name: "SJC Bảo Tín Mạnh Hải",
-    buy: 142.0,
-    sell: 144.5,
-    yesterdayChange: 1.2,
+    buy: 83.0,
+    sell: 85.0,
+    yesterdayChange: 0.15,
     code: "SJC-BTMH",
-    history: [140.0, 140.5, 141.2, 141.5, 142.0, 141.8, 142.0]
+    history: [82.1, 82.3, 82.8, 83.0, 83.1, 82.9, 83.0]
   },
   doji: {
     name: "Nhẫn trơn Kim Gia Bảo 24K",
-    buy: 136.5,
-    sell: 138.0,
-    yesterdayChange: 0.85,
+    buy: 75.5,
+    sell: 76.7,
+    yesterdayChange: 0.25,
     code: "KGB-BTMH",
-    history: [135.2, 135.5, 135.8, 136.0, 136.5, 136.3, 136.5]
+    history: [74.5, 74.8, 75.1, 75.3, 75.5, 75.3, 75.5]
   },
   pnj: {
     name: "Nhẫn tròn 999.9 BTMH",
-    buy: 136.0,
-    sell: 137.5,
-    yesterdayChange: 0.65,
+    buy: 75.2,
+    sell: 76.4,
+    yesterdayChange: 0.2,
     code: "BT24K-BTMH",
-    history: [134.5, 134.8, 135.2, 135.4, 136.0, 135.8, 136.0]
+    history: [74.2, 74.5, 74.8, 75.0, 75.2, 75.0, 75.2]
   }
 };
 
