@@ -61,6 +61,72 @@ function parseToMillionPerLuong(rawText: string): number | null {
   return null;
 }
 
+/**
+ * Safely fetches contents from a URL using multiple high-reliability public CORS proxies as fallbacks.
+ */
+async function fetchHtmlWithFallback(targetUrl: string): Promise<string> {
+  const cacheBustedUrl = `${targetUrl}${targetUrl.includes("?") ? "&" : "?"}nocache=${Date.now()}`;
+  
+  // 1. Try DIRECT fetch first (may fail in browser due to CORS, but always good to try first)
+  try {
+    console.log(`[BTMH Scraper] Attempting direct fetch: ${cacheBustedUrl}`);
+    const res = await fetch(cacheBustedUrl, { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const text = await res.text();
+      console.log(`[BTMH Scraper] Direct fetch succeeded!`);
+      return text;
+    }
+  } catch (directError) {
+    console.warn(`[BTMH Scraper] Direct fetch to ${targetUrl} was blocked or timed out (CORS is expected on client side).`);
+  }
+
+  // List of high-quality, free CORS proxies with correct response parsing methods
+  const proxies = [
+    {
+      name: "corsproxy.io",
+      getUrl: (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      parse: async (res: Response) => res.text()
+    },
+    {
+      name: "codetabs.com",
+      getUrl: (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+      parse: async (res: Response) => res.text()
+    },
+    {
+      name: "allorigins.win",
+      getUrl: (url: string) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+      parse: async (res: Response) => {
+        const json = await res.json();
+        return json?.contents || "";
+      }
+    }
+  ];
+
+  for (const proxy of proxies) {
+    try {
+      const proxiedUrl = proxy.getUrl(cacheBustedUrl);
+      console.log(`[BTMH Scraper] Trying fallback proxy [${proxy.name}]: ${proxiedUrl}`);
+      
+      const res = await fetch(proxiedUrl, { signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const text = await proxy.parse(res);
+        if (text && text.trim().length > 500) { // Verify received meaningful HTML payload
+          console.log(`[BTMH Scraper] Proxy [${proxy.name}] fetch succeeded! Sized: ${text.length} chars.`);
+          return text;
+        }
+        console.warn(`[BTMH Scraper] Proxy [${proxy.name}] succeeded but returned empty or too-short page content.`);
+      } else {
+        console.warn(`[BTMH Scraper] Proxy [${proxy.name}] returned status ${res.status}`);
+      }
+    } catch (proxyError) {
+      console.warn(`[BTMH Scraper] Proxy [${proxy.name}] fetch failed:`, proxyError);
+    }
+  }
+
+  console.error(`[BTMH Scraper] All CORS proxies and direct fetches failed for: ${targetUrl}`);
+  return "";
+}
+
 export async function fetchLiveGoldData(): Promise<{
   prices: GoldPriceMap;
   crawledProducts: CrawledProduct[];
@@ -126,17 +192,11 @@ export async function fetchLiveGoldData(): Promise<{
   let scrapedList: CrawledProduct[] = [];
 
   try {
-    // 1. Fetch Pages via AllOrigins CORS proxy with caching avoided
-    const targetTichLuy = `${tichLuyUrl}?nocache=${Date.now()}`;
-    const targetNhanTron = `${nhanTronUrl}?nocache=${Date.now()}`;
-
-    const [tlResponse, ntResponse] = await Promise.all([
-      fetch(`${proxyUrl}${encodeURIComponent(targetTichLuy)}`).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch(`${proxyUrl}${encodeURIComponent(targetNhanTron)}`).then(r => r.ok ? r.json() : null).catch(() => null)
+    // Fetch pages using our robust fallback mechanism
+    const [tichLuyText, nhanTronText] = await Promise.all([
+      fetchHtmlWithFallback(tichLuyUrl),
+      fetchHtmlWithFallback(nhanTronUrl)
     ]);
-
-    const tichLuyText = tlResponse?.contents || "";
-    const nhanTronText = ntResponse?.contents || "";
 
     let sjcBuy = 0;
     let sjcSell = 0;
