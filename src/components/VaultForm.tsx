@@ -71,21 +71,6 @@ export default function VaultForm({ prices, onAddTransaction }: VaultFormProps) 
       </h3>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Gold Type selection (Locked to Kim Gia Bảo 24K) */}
-        <div>
-          <label className="block text-[11px] font-bold text-amber-900/70 uppercase tracking-wider mb-1.5">
-            Sản phẩm tích lũy
-          </label>
-          <div className="bg-amber-100/40 border border-amber-200/60 rounded-xl p-3 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-bold text-amber-950">Nhẫn trơn Kim Gia Bảo 24K</div>
-              <div className="text-[10px] text-amber-800/80 font-mono mt-0.5">{prices.doji.code}</div>
-            </div>
-            <span className="text-xs bg-amber-200/60 text-amber-900 font-bold px-2.5 py-1 rounded-lg">
-              Đang theo dõi ✨
-            </span>
-          </div>
-        </div>
 
         {/* Quantity & Unit Row */}
         <div className="grid grid-cols-12 gap-3">
@@ -189,15 +174,6 @@ export default function VaultForm({ prices, onAddTransaction }: VaultFormProps) 
               className="w-full bg-white border border-amber-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
           </div>
-        </div>
-
-        {/* Small explainer note */}
-        <div className="flex gap-1.5 bg-amber-100/30 p-2 rounded-xl text-[10px] text-amber-900/70 shrink-0 leading-normal border border-amber-200/20">
-          <Info size={11} className="mt-0.5 shrink-0 text-amber-600" />
-          <p>
-            Mèo béo sẽ tự động đối chiếu số vàng này với giá bán ra của{" "}
-            <strong>{prices[type].name}</strong> hôm nay để tính lợi nhuận tức thời cho sen meow!
-          </p>
         </div>
 
         {/* Submit button */}

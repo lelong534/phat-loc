@@ -102,7 +102,7 @@ export default function App() {
   const [crawledProducts, setCrawledProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isTestCrawling, setIsTestCrawling] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<"vault" | "market" | "ai">("vault");
+  const [activeTab, setActiveTab] = useState<"vault" | "ai">("vault");
 
   // Load Transactions from LocalStorage representing user's digital gold box
   const [transactions, setTransactions] = useState<GoldTransaction[]>(() => {
@@ -584,121 +584,6 @@ export default function App() {
               </div>
             )}
 
-            {activeTab === "market" && (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto w-full px-1">
-                {/* Left side: Golden interactive chart (Takes 7 columns) */}
-                <div className="lg:col-span-7">
-                  <GoldPriceChart prices={prices} onModifyPrice={handleModifyPrice} />
-                </div>
-                {/* Right side: hot news list (Takes 5 columns) */}
-                <div className="lg:col-span-5">
-                  <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm w-full mx-auto my-4 lg:my-4">
-                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 mb-3">
-                      <Newspaper size={13} className="text-amber-500 shrink-0" />
-                      <span>Tin Nóng Sổ Vàng</span>
-                    </h4>
-                    <div className="space-y-3">
-                      {news.map((item) => (
-                        <div key={item.id} className="text-xs pb-2.5 border-b border-slate-100 last:border-0 last:pb-0">
-                          <div className="flex justify-between items-center text-[10px] text-slate-400 mb-1 font-medium">
-                            <span>{item.source} • {item.time}</span>
-                            <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold ${
-                              item.sentiment === "positive" 
-                                ? "bg-emerald-50 text-emerald-600" 
-                                : "bg-slate-100 text-slate-500"
-                            }`}>
-                              {item.sentiment === "positive" ? "Tín hiệu Tốt" : "Nhận định"}
-                            </span>
-                          </div>
-                          <h5 className="font-bold text-slate-700 leading-normal hover:text-amber-600 cursor-pointer transition-colors">
-                            {item.title}
-                          </h5>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                   {/* Real Scraped Vàng Tích Lũy Products catalog */}
-                  <div className="bg-gradient-to-b from-amber-50/50 to-white border border-amber-100/60 rounded-3xl p-5 shadow-xs w-full mx-auto my-4">
-                    <h4 className="text-xs font-bold text-[#854D0E] uppercase tracking-wider flex items-center justify-between mb-3.5">
-                      <div className="flex items-center gap-1.5 font-bold">
-                        <span className="text-sm">🪙</span>
-                        <span>Vàng BTMH Live (Scraped)</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={handleTestCrawl}
-                          disabled={isTestCrawling}
-                          className="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-[9px] font-black px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1 transition-all cursor-pointer disabled:bg-amber-300 disabled:cursor-not-allowed"
-                        >
-                          {isTestCrawling ? (
-                            <>
-                              <span className="w-1 h-1 bg-white rounded-full animate-ping" />
-                              <span>Đang quét...</span>
-                            </>
-                          ) : (
-                            <span>Quét Nhẫn Trơn ⚡</span>
-                          )}
-                        </button>
-                        <span className="bg-amber-100 text-[#854D0E] text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase">Live</span>
-                      </div>
-                    </h4>
-                    
-                    {crawledProducts.length === 0 ? (
-                      <div className="text-center py-6 text-slate-400 text-xs">
-                        {isLoading ? (
-                          <div className="flex items-center justify-center gap-2">
-                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping" />
-                            <span>Đang crawl danh sách sản phẩm...</span>
-                          </div>
-                        ) : (
-                          <span>Chưa có dữ liệu sản phẩm. Hãy bấm Cập nhật meow!</span>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
-                        {crawledProducts.map((p, idx) => (
-                          <div key={idx} className="flex gap-2.5 items-center p-2 rounded-xl hover:bg-amber-50/40 border border-amber-100/40 transition-all text-xs bg-white">
-                            <img 
-                              src={p.image} 
-                              alt={p.title} 
-                              referrerPolicy="no-referrer"
-                              className="w-10 h-10 object-contain rounded-lg border border-slate-100 shrink-0 bg-stone-50"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = "https://baotinmanhhai.vn/uploads/logo/logo-btmh.png";
-                              }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <h5 className="font-bold text-slate-700 leading-tight text-[11px] truncate" title={p.title}>
-                                {p.title}
-                              </h5>
-                              <div className="flex justify-between items-baseline mt-1">
-                                <span className="font-black font-mono text-[#854D0E] text-[11px]">
-                                  {p.priceRaw}
-                                </span>
-                                <a 
-                                  href={p.url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-[9px] font-bold text-amber-600 hover:text-amber-700 underline flex items-center gap-0.5"
-                                >
-                                  Giá gốc ↗
-                                </a>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                        <div className="text-[9px] text-[#A16207]/80 text-center font-bold mt-2">
-                          * Dữ liệu được crawl tự động 100% từ baotinmanhhai.vn
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                </div>
-              </div>
-            )}
-
             {activeTab === "ai" && (
               <div className="max-w-4xl mx-auto w-full px-2">
                 <GoldChatbot portfolio={portfolioSummary} />
@@ -720,18 +605,6 @@ export default function App() {
             >
               <Wallet size={18} className={activeTab === "vault" ? "stroke-[2.5]" : "stroke-[1.8]"} />
               <span className="text-[10px] font-bold tracking-tight">Két vàng</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("market")}
-              className={`flex flex-col items-center gap-1 py-1.5 px-5 rounded-2xl transition-all cursor-pointer ${
-                activeTab === "market"
-                  ? "bg-amber-400 text-[#854D0E] font-bold shadow-xs scale-105"
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              <TrendingUp size={18} className={activeTab === "market" ? "stroke-[2.5]" : "stroke-[1.8]"} />
-              <span className="text-[10px] font-bold tracking-tight">Thị trường</span>
             </button>
 
             <button
