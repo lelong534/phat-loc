@@ -51,3 +51,17 @@ export interface ChatMessage {
   text: string;
   timestamp: Date;
 }
+
+export function getApiUrl(path: string): string {
+  // If we are on Vercel or other external host, point to our Cloud Run backend deployment
+  const isCustomHost = typeof window !== "undefined" && 
+                       window.location.hostname !== "localhost" && 
+                       !window.location.hostname.endsWith(".run.app") && 
+                       !window.location.hostname.match(/^127\./) &&
+                       window.location.hostname !== "::1";
+  
+  if (isCustomHost) {
+    return `https://ais-pre-nsrpe2fj3dygpx3kufcrfs-229900755055.asia-southeast1.run.app${path}`;
+  }
+  return path;
+}

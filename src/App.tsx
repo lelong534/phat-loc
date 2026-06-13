@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { GoldTransaction, GoldPriceMap, GoldPortfolioSummary, GoldTypeCode, GoldNews } from "./types";
+import { GoldTransaction, GoldPriceMap, GoldPortfolioSummary, GoldTypeCode, GoldNews, getApiUrl } from "./types";
 import GoldCat from "./components/GoldCat";
 import VaultForm from "./components/VaultForm";
 import GoldVaultList from "./components/GoldVaultList";
@@ -253,15 +253,35 @@ export default function App() {
   const fetchPrices = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/gold-prices");
+      const response = await fetch(getApiUrl("/api/gold-prices"));
       if (response.ok) {
         const data = await response.json();
         if (data.prices) setPrices(data.prices);
         if (data.news) setNews(data.news);
         if (data.crawledProducts) setCrawledProducts(data.crawledProducts);
+        
+        // Dynamic success alert on active refresh
+        const successToast: InAppToast = {
+          id: `prices-sync-ok-${Date.now()}`,
+          title: "✨ Đã cập nhật giá mới nhất!",
+          description: "Thông tin hũ vàng được đồng bộ thành công với Bảo Tín Mạnh Hải!",
+          type: "up"
+        };
+        setToasts((prev) => [...prev, successToast]);
+        playCoinSound();
+      } else {
+        throw new Error(`Mã phản hồi ${response.status}`);
       }
-    } catch (err) {
-      console.warn("Failed to fetch fresh gold prices, using robust offline default map: ", err);
+    } catch (err: any) {
+      console.warn("Failed to fetch fresh gold prices: ", err);
+      
+      const errorToast: InAppToast = {
+        id: `prices-sync-error-${Date.now()}`,
+        title: "⚠️ Không thể kết nối máy chủ!",
+        description: "Không thể lấy thông tin giá vàng mới nhất. Vui lòng kiểm tra lại kết nối mạng.",
+        type: "down"
+      };
+      setToasts((prev) => [...prev, errorToast]);
     } finally {
       setIsLoading(false);
     }
@@ -271,7 +291,7 @@ export default function App() {
   const handleTestCrawl = async () => {
     setIsTestCrawling(true);
     try {
-      const response = await fetch("/api/test-crawl");
+      const response = await fetch(getApiUrl("/api/test-crawl"));
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -283,8 +303,8 @@ export default function App() {
           
           const successToast: InAppToast = {
             id: `test-crawl-ok-${Date.now()}`,
-            title: "🎉 Test Crawl Thành Công!",
-            description: `Đã crawl trực tiếp vàng Bảo Tín Mạnh Hải! Tìm thấy ${totalCrawled} sản phẩm, trong đó có ${ringCount} sản phẩm nhẫn trơn meow~`,
+            title: "🎉 Quét Live Thành Công!",
+            description: `Đã cập nhật từ Bảo Tín Mạnh Hải! Tìm thấy ${totalCrawled} sản phẩm, trong đó có ${ringCount} sản phẩm nhẫn trơn!`,
             type: "up"
           };
           setToasts((prev) => [...prev, successToast]);
@@ -296,11 +316,11 @@ export default function App() {
         throw new Error(`HTTP ${response.status}`);
       }
     } catch (err: any) {
-      console.error("Test crawl call failed:", err);
+      console.warn("Test crawl call failed:", err);
       const errorToast: InAppToast = {
-        id: `test-crawl-err-${Date.now()}`,
-        title: "⚠️ Không Thể Quét Live Trực Tiếp",
-        description: `Trang web Bảo Tín Mạnh Hải chặn kết nối hoặc quá tải: ${err.message || ""}. Chuyển sang dữ liệu chuẩn định cấu hình meow~`,
+        id: `test-crawl-error-${Date.now()}`,
+        title: "⚠️ Không thể kết nối máy chủ!",
+        description: "Tính năng Quét Live không khả dụng do không thể kết nối tới máy chủ.",
         type: "down"
       };
       setToasts((prev) => [...prev, errorToast]);
@@ -488,13 +508,6 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <button
-              onClick={handleTestCrawl}
-              disabled={isTestCrawling}
-              className="px-2.5 py-1 text-[9px] font-extrabold tracking-wider uppercase text-white bg-amber-500 hover:bg-amber-600 active:scale-95 transition-all rounded-lg cursor-pointer disabled:bg-amber-300 shadow-sm"
-            >
-              Crawl Live ⚡
-            </button>
             <button
               onClick={fetchPrices}
               disabled={isLoading}

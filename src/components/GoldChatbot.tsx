@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Sparkles, MessageCircle, Cpu, Loader2 } from "lucide-react";
-import { ChatMessage, GoldPortfolioSummary } from "../types";
+import { ChatMessage, GoldPortfolioSummary, getApiUrl } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 
 interface GoldChatbotProps {
@@ -47,7 +47,7 @@ export default function GoldChatbot({ portfolio }: GoldChatbotProps) {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch(getApiUrl("/api/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
