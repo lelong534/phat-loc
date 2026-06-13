@@ -102,7 +102,7 @@ export default function App() {
   const [crawledProducts, setCrawledProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isTestCrawling, setIsTestCrawling] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<"vault" | "ai">("vault");
+  const [showManager, setShowManager] = useState<boolean>(false);
 
   // Load Transactions from LocalStorage representing user's digital gold box
   const [transactions, setTransactions] = useState<GoldTransaction[]>(() => {
@@ -476,156 +476,196 @@ export default function App() {
   const isProfit = portfolioSummary.totalProfit >= 0;
 
   return (
-    <div className="min-h-screen h-screen w-full bg-[#FFFDF7] font-sans transition-colors overflow-hidden flex flex-col">
-      
-      {/* Sleek full-pane centered application surface */}
-      <div className="w-full h-full bg-[#FFFDF7] overflow-hidden flex flex-col" id="app-container">
+    <div className="min-h-screen w-full bg-[#FAF9F5] font-sans text-stone-800 antialiased flex flex-col">
+      {/* Top clean minimal navigation */}
+      <header className="border-b border-amber-100/50 bg-white/70 backdrop-blur-md sticky top-0 z-30 px-4 py-3 shrink-0">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <span className="text-lg">🐱</span>
+            <div>
+              <h1 className="text-xs font-black uppercase tracking-widest text-[#854D0E]">Kim Gia Bảo 24K</h1>
+              <p className="text-[9px] uppercase tracking-wider text-[#A16207]/70 font-bold">Két vàng của bạn</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleTestCrawl}
+              disabled={isTestCrawling}
+              className="px-2.5 py-1 text-[9px] font-extrabold tracking-wider uppercase text-white bg-amber-500 hover:bg-amber-600 active:scale-95 transition-all rounded-lg cursor-pointer disabled:bg-amber-300 shadow-sm"
+            >
+              Crawl Live ⚡
+            </button>
+            <button
+              onClick={fetchPrices}
+              disabled={isLoading}
+              className="p-1 px-2 rounded-lg bg-stone-50 hover:bg-amber-50/50 border border-stone-200/50 text-stone-600 transition-all flex items-center justify-center cursor-pointer"
+              title="Cập nhật giá"
+            >
+              <RefreshCcw size={11} className={isLoading ? "animate-spin" : ""} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Focus Dashboard Layout */}
+      <main className="flex-1 max-w-md w-full mx-auto px-4 py-5 flex flex-col gap-5">
         
-        {/* Dynamic header / Title - Sleek Interface Style */}
-        <header className="bg-gradient-to-b from-[#FFFDF0] to-[#FFFBEB] p-5 pt-5 pb-4 shadow-xs border-b border-[#FDE68A] shrink-0">
-          <div className="max-w-7xl mx-auto w-full">
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xl">🐱</span>
-                <div>
-                  <h1 className="text-base font-black tracking-tight text-[#854D0E] uppercase leading-none">Kim Gia Bảo 24K</h1>
-                  <span className="text-[9px] font-bold text-[#A16207]/75">MÈO BÉO CANH GIỮ HŨ VÀNG NHẪN TRƠN</span>
-                </div>
-              </div>
-
-              <button
-                onClick={fetchPrices}
-                disabled={isLoading}
-                className="p-1 px-2.5 rounded-xl bg-white hover:bg-amber-50 border border-[#FDE68A] text-[#854D0E] hover:scale-105 active:scale-95 transition-all text-[9px] font-bold flex items-center gap-1 cursor-pointer"
-              >
-                <RefreshCcw size={9} className={isLoading ? "animate-spin" : ""} />
-                <span>Cập nhật</span>
-              </button>
-            </div>
-
-            {/* Portfolio Net Worth Box Widget - Sleek Interface style */}
-            <div className="bg-[#FEF3C7] text-[#92400E] rounded-2.5xl p-3 px-4 shadow-sm flex items-center justify-between relative overflow-hidden border border-[#FDE68A]">
-              {/* Sparkles decoration background */}
-              <div className="absolute right-2 top-2 text-[#F59E0B] opacity-15 pointer-events-none">
-                <Sparkles size={35} className="animate-pulse" />
-              </div>
-
-              <div>
-                <span className="text-[9px] uppercase tracking-wider block font-bold text-[#A16207]">
-                  Két Nhẫn Kim Gia Bảo 24K
-                </span>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-black font-mono tracking-tight text-[#854D0E]">
-                    {portfolioSummary.currentValue.toFixed(2)}
-                  </span>
-                  <span className="text-[10px] font-bold text-[#A16207]">triệu đ</span>
-                </div>
-                <span className="text-[9px] text-[#A16207]/80 block mt-0.5 font-semibold">
-                  Sở hữu: <strong className="text-[#854D0E] font-mono text-[10px] font-bold">{portfolioSummary.totalQuantity.toFixed(1)} chỉ</strong>
-                </span>
-              </div>
-
-              <div className="text-right z-10 shrink-0">
-                <span className="text-[8px] uppercase tracking-wider block text-[#A16207]/80 mb-0.5 font-bold">Lũy kế lời lỗ</span>
-                <div className={`p-1 px-2.5 rounded-lg font-bold flex items-center gap-1 text-[10px] ${
-                  portfolioSummary.totalTransactions === 0
-                    ? "bg-stone-200/50 text-stone-500"
-                    : isProfit 
-                      ? "bg-emerald-100 text-emerald-800" 
-                      : "bg-rose-100 text-rose-800"
-                }`}>
-                  {portfolioSummary.totalTransactions === 0 ? (
-                    <span>0đ</span>
-                  ) : (
-                    <>
-                      <span className="font-mono font-black">
-                        {isProfit ? "+" : "-"}
-                        {Math.abs(portfolioSummary.totalProfit).toFixed(1)}Tr ({isProfit ? "+" : "-"}
-                        {portfolioSummary.profitPercentage.toFixed(0)}%)
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Scrollable View Containment Area */}
-        <main className="flex-1 overflow-y-auto bg-white" id="main-scroll-body">
+        {/* HERO CARD: Today's Fluctuation & Total Assets */}
+        <section className="bg-white border border-amber-100/80 rounded-3xl p-5 shadow-sm relative overflow-hidden flex flex-col gap-4">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-amber-400" />
           
-          {/* Animated Golden Cat Representative above */}
-          <section className="bg-gradient-to-b from-[#FFFDF0] to-transparent pt-3 pb-2 select-none border-b border-[#FFFBEB]">
-            <div className="max-w-7xl mx-auto w-full px-4">
-              <GoldCat 
-                portfolio={portfolioSummary} 
-                todayChange={assetsChangeToday} 
-                onPoke={() => {}} 
-              />
+          <div className="text-center pt-1">
+            <span className="text-[10px] font-black uppercase tracking-widest text-stone-400 block mb-0.5">
+              BIẾN ĐỘNG HÔM NAY
+            </span>
+            
+            {/* The absolute main highlight of the screen */}
+            <div className={`text-3xl font-black font-mono tracking-tight my-1.5 flex items-center justify-center gap-1 ${
+              assetsChangeToday > 0 
+                ? "text-emerald-600 animate-pulse" 
+                : assetsChangeToday < 0 
+                  ? "text-rose-600" 
+                  : "text-stone-500"
+            }`}>
+              <span>{assetsChangeToday > 0 ? "▲" : assetsChangeToday < 0 ? "▼" : "●"}</span>
+              <span>
+                {assetsChangeToday !== 0 ? (
+                  `${assetsChangeToday > 0 ? "+" : "-"}${Math.abs(Math.round(assetsChangeToday * 1000000)).toLocaleString("vi-VN")} đ`
+                ) : (
+                  "0 đ"
+                )}
+              </span>
             </div>
-          </section>
 
-          {/* Dynamic render components inside Tabs */}
-          <section className="px-3 py-3">
-            {activeTab === "vault" && (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto w-full px-1">
-                {/* Left side actions and configuration (Takes 5 out of 12 columns) */}
-                <div className="lg:col-span-5 space-y-4">
-                  <VaultForm prices={prices} onAddTransaction={handleAddTransaction} />
-                </div>
-                {/* Right side transactions list (Takes 7 out of 12 columns) */}
-                <div className="lg:col-span-7">
-                  <GoldVaultList 
-                    transactions={transactions} 
-                    prices={prices} 
-                    onDeleteTransaction={handleDeleteTransaction} 
-                  />
-                </div>
-              </div>
-            )}
-
-            {activeTab === "ai" && (
-              <div className="max-w-4xl mx-auto w-full px-2">
-                <GoldChatbot portfolio={portfolioSummary} />
-              </div>
-            )}
-          </section>
-        </main>
-
-        {/* Modern Web App Navigation Dock - Sticky Bottom */}
-        <nav className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-3 px-6 flex justify-around items-center z-40 shadow-md mt-auto border-t border-[#FDE68A]/50">
-          <div className="max-w-2xl mx-auto w-full flex justify-around items-center">
-            <button
-              onClick={() => setActiveTab("vault")}
-              className={`flex flex-col items-center gap-1 py-1.5 px-5 rounded-2xl transition-all cursor-pointer ${
-                activeTab === "vault"
-                  ? "bg-amber-400 text-[#854D0E] font-bold shadow-xs scale-105"
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              <Wallet size={18} className={activeTab === "vault" ? "stroke-[2.5]" : "stroke-[1.8]"} />
-              <span className="text-[10px] font-bold tracking-tight">Két vàng</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("ai")}
-              className={`flex flex-col items-center gap-1 py-1.5 px-5 rounded-2xl transition-all cursor-pointer relative ${
-                activeTab === "ai"
-                  ? "bg-amber-400 text-[#854D0E] font-bold shadow-xs scale-105"
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              {/* Tiny live AI notification pulse dot */}
-              {activeTab !== "ai" && (
-                <span className="absolute top-1 right-7 w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping" />
-              )}
-              <MessageSquare size={18} className={activeTab === "ai" ? "stroke-[2.5]" : "stroke-[1.8]"} />
-              <span className="text-[10px] font-bold tracking-tight">Hỏi Mèo Béo</span>
-            </button>
+            <span className={`text-[10px] font-extrabold px-3 py-0.5 rounded-full ${
+              assetsChangeToday > 0 
+                ? "bg-emerald-50 text-emerald-700" 
+                : assetsChangeToday < 0 
+                  ? "bg-rose-50 text-rose-700" 
+                  : "bg-stone-50 text-stone-600"
+            }`}>
+              {assetsChangeToday > 0 ? "Hôm nay két sinh lời! 🐟✨" : assetsChangeToday < 0 ? "Tiếp tục tích lũy nhen! 💪" : "Hôm nay thị trường đứng yên 🐾"}
+            </span>
           </div>
-        </nav>
-      </div>
 
+          <div className="border-t border-stone-100/65 my-1" />
+
+          {/* Asset summary details */}
+          <div className="grid grid-cols-2 gap-3 pb-1">
+            <div className="bg-[#FAF9F5]/80 rounded-2xl p-3 border border-stone-100/50">
+              <span className="text-[9px] uppercase tracking-wider text-stone-400 font-bold block mb-0.5">Hũ Vàng 24K</span>
+              <div className="flex items-baseline gap-0.5 text-stone-800">
+                <span className="text-lg font-black font-mono tracking-tight">
+                  {portfolioSummary.currentValue.toFixed(2)}
+                </span>
+                <span className="text-[10px] font-bold">Trđ</span>
+              </div>
+              <span className="text-[9px] font-bold text-amber-800/80 mt-0.5 block">
+                Sở hữu: <strong className="font-mono text-amber-900">{portfolioSummary.totalQuantity.toFixed(1)} chỉ</strong>
+              </span>
+            </div>
+
+            <div className="bg-[#FAF9F5]/80 rounded-2xl p-3 border border-stone-100/50">
+              <span className="text-[9px] uppercase tracking-wider text-stone-400 font-bold block mb-0.5">Tổng lãi/lỗ lũy kế</span>
+              {portfolioSummary.totalTransactions === 0 ? (
+                <div className="text-stone-400 font-bold text-xs pt-1">Chưa có giao dịch</div>
+              ) : (
+                <>
+                  <div className={`flex items-baseline gap-0.5 text-lg font-black font-mono tracking-tight ${isProfit ? "text-emerald-600" : "text-rose-600"}`}>
+                    <span>{isProfit ? "+" : "-"}</span>
+                    <span>{Math.abs(portfolioSummary.totalProfit).toFixed(2)}</span>
+                    <span className="text-[10px] font-bold">Trđ</span>
+                  </div>
+                  <span className={`text-[9px] font-black tracking-tight ${isProfit ? "text-emerald-700" : "text-rose-700"}`}>
+                    {isProfit ? "▲" : "▼"} {portfolioSummary.profitPercentage.toFixed(1)}% lũy kế
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Compact Gold rate info box */}
+          <div className="bg-[#FFFDF6] border border-amber-100/60 rounded-2xl p-3 text-[11px] text-stone-600 space-y-1.5 shadow-2xs">
+            <div className="flex justify-between items-center">
+              <span className="text-stone-400 font-semibold uppercase text-[9px] tracking-wider">Giá bán ra hôm nay</span>
+              <span className="font-black text-[#854D0E] font-mono">{(prices.doji.sell).toFixed(2)} Tr/Lượng</span>
+            </div>
+            <div className="flex justify-between items-center text-[10px] border-t border-amber-100/30 pt-1.5">
+              <span className="text-stone-400 font-semibold uppercase text-[9px] tracking-wider">Giá hôm qua</span>
+              <span className="text-stone-500 font-medium font-mono">{(prices.doji.sell - prices.doji.yesterdayChange).toFixed(2)} Tr/Lượng</span>
+            </div>
+            <div className="flex justify-between items-center text-[10px]">
+              <span className="text-stone-400 font-semibold uppercase text-[9px] tracking-wider">Biến động giá / chỉ</span>
+              <span className={`font-mono font-bold ${prices.doji.yesterdayChange >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                {prices.doji.yesterdayChange >= 0 ? "+" : ""}
+                {Math.abs(Math.round((prices.doji.yesterdayChange / 10) * 1000000)).toLocaleString("vi-VN")} đ
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* COMPACT CAT MASCOT */}
+        <section className="bg-white/50 border border-stone-200/40 rounded-3xl p-2 shadow-2xs">
+          <GoldCat 
+            portfolio={portfolioSummary} 
+            todayChange={assetsChangeToday} 
+            onPoke={() => {}} 
+          />
+        </section>
+
+        {/* TRANSACTIONS DRAWER & SETTING */}
+        <section className="mt-1">
+          <button
+            onClick={() => setShowManager(!showManager)}
+            className="w-full bg-[#FEF3C7]/45 hover:bg-[#FEF3C7]/75 border border-[#FDE68A]/60 rounded-2xl p-3 flex items-center justify-between transition-all cursor-pointer text-xs font-bold text-[#854D0E]"
+          >
+            <div className="flex items-center gap-2">
+              <span>⚙️</span>
+              <span>Cài đặt Giao dịch & Sổ vàng</span>
+              <span className="text-[9px] bg-amber-200/50 text-[#854D0E] font-medium px-2 py-0.5 rounded-md">
+                {transactions.length} GD
+              </span>
+            </div>
+            <span className="text-[10px] text-[#A16207]/70 font-black">
+              {showManager ? "Đóng ▲" : "Chi tiết ▼"}
+            </span>
+          </button>
+
+          {showManager && (
+            <div className="mt-3 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="border border-stone-200/50 rounded-3xl p-4 bg-white/80 shadow-2xs">
+                <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-3">📝 Nhập giao dịch mới</h3>
+                <VaultForm prices={prices} onAddTransaction={handleAddTransaction} />
+              </div>
+              
+              <div className="border border-stone-200/50 rounded-3xl p-4 bg-white shadow-2xs">
+                <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-3">📜 Sổ giao dịch đang lưu trữ</h3>
+                <GoldVaultList 
+                  transactions={transactions} 
+                  prices={prices} 
+                  onDeleteTransaction={handleDeleteTransaction} 
+                />
+              </div>
+            </div>
+          )}
+        </section>
+      </main>
+
+      {/* Toast notifications rendering cleanly */}
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4">
+        {toasts.map((t) => (
+          <div 
+            key={t.id} 
+            className="p-3 bg-stone-900 text-stone-100 rounded-xl shadow-lg border border-stone-800 text-xs pointer-events-auto animate-in slide-in-from-bottom-2 duration-300"
+          >
+            <div className="font-bold flex items-center gap-1">
+              <span>{t.type === "up" ? "✨" : "⚠️"}</span>
+              <span>{t.title}</span>
+            </div>
+            <p className="text-stone-300 text-[10px] mt-1 leading-normal">{t.description}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
