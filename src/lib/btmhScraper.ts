@@ -141,6 +141,21 @@ export async function fetchLiveGoldData(): Promise<{
   crawledProducts: CrawledProduct[];
   news: GoldNews[];
 }> {
+  // 1. Try to fetch from the server-side /api/gold-prices endpoint first (bypass CORS/Cloudflare natively)
+  try {
+    const response = await fetch("/api/gold-prices");
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.prices && data.crawledProducts) {
+        console.log("[BTMH Scraper] Successfully retrieved live gold prices via Serverless API.");
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn("[BTMH Scraper] Native API route failed or not deployed yet, using client-side proxy fallback:", err);
+  }
+
+  // 2. Client-side fallback scraping logic (remains active for local redundancy)
   const defaultPrices: GoldPriceMap = {
     sjc: {
       name: "SJC Bảo Tín Mạnh Hải",
