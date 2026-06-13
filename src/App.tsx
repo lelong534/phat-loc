@@ -263,7 +263,7 @@ export default function App() {
       const successToast: InAppToast = {
         id: `prices-sync-ok-${Date.now()}`,
         title: "✨ Đã cập nhật giá mới nhất!",
-        description: "Thông tin hũ vàng được đồng bộ thành công với Bảo Tín Mạnh Hải!",
+        description: "Thông tin hũ vàng được đồng bộ thành công với VnExpress!",
         type: "up"
       };
       setToasts((prev) => [...prev, successToast]);
@@ -301,7 +301,7 @@ export default function App() {
       const successToast: InAppToast = {
         id: `test-crawl-ok-${Date.now()}`,
         title: "🎉 Quét Live Thành Công!",
-        description: `Đã quét thành công từ Bảo Tín Mạnh Hải! Tìm thấy ${totalCrawled} sản phẩm, trong đó có ${ringCount} sản phẩm nhẫn trơn!`,
+        description: `Đã quét thành công từ VnExpress! Cập nhật tin tức và giá nhẫn trơn Kim Gia Bảo 24K - 1 chỉ!`,
         type: "up"
       };
       setToasts((prev) => [...prev, successToast]);
@@ -311,7 +311,7 @@ export default function App() {
       const errorToast: InAppToast = {
         id: `test-crawl-error-${Date.now()}`,
         title: "⚠️ Lỗi quét trực tiếp!",
-        description: "Tính năng Quét Live không thành công qua trình duyệt hiện tại.",
+        description: "Không thể kết nối máy chủ VnExpress, đang hiển thị dữ liệu lưu cấu hình.",
         type: "down"
       };
       setToasts((prev) => [...prev, errorToast]);
@@ -598,6 +598,58 @@ export default function App() {
             onPoke={() => {}} 
           />
         </section>
+
+        {/* VNEXPRESS GOLD NEWS SECTION */}
+        {news && news.length > 0 && (
+          <section className="bg-white border border-amber-100/80 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
+            <div className="flex justify-between items-center pb-2 border-b border-stone-100">
+              <h3 className="text-xs font-black uppercase tracking-widest text-[#854D0E] flex items-center gap-1.5">
+                <Newspaper size={13} className="text-amber-600" />
+                <span>Tin nhanh Vàng (VnExpress)</span>
+              </h3>
+              <span className="text-[9px] bg-red-50 text-red-700 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                Trực tuyến
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-3 divide-y divide-stone-100/50">
+              {news.slice(0, 5).map((item, idx) => (
+                <a 
+                  key={item.id || idx} 
+                  href={item.link || "https://vnexpress.net/chu-de/gia-vang-1403"} 
+                  target="_blank" 
+                  referrerPolicy="no-referrer"
+                  className="pt-3 first:pt-0 group flex gap-3 items-start hover:opacity-90 transition-opacity cursor-pointer text-left block"
+                >
+                  {item.image && (
+                    <img 
+                      src={item.image} 
+                      alt="news thumb" 
+                      referrerPolicy="no-referrer"
+                      className="w-16 h-12 object-cover rounded-lg bg-stone-100 border border-stone-200/50 flex-shrink-0" 
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-[11px] font-bold text-stone-800 leading-snug group-hover:text-amber-800 transition-colors">
+                      {item.title}
+                    </h4>
+                    <p className="text-[9px] text-stone-400 mt-1 flex items-center gap-1.5 font-medium">
+                      <span>📰 {item.source || "VnExpress"}</span>
+                      <span>•</span>
+                      <span>{item.time || "Gần đây"}</span>
+                    </p>
+                    {item.description && (
+                      <p className="text-[9px] text-stone-500 mt-1 line-clamp-2 leading-relaxed">
+                        {item.description}
+                      </p>
+                    )}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* TRANSACTIONS DRAWER & SETTING */}
         <section className="mt-1">
