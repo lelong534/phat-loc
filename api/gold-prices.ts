@@ -72,185 +72,157 @@ export default async function handler(req: Request, res: Response) {
 
   let extractedNews: GoldNews[] = [];
 
+  // 1. Fetch live gold rates from gw.vnexpress.net API using custom headers
   try {
-    // Curl-equivalent headers requested explicitly by the user
-    const headers = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-      "Accept-Language": "vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5,zh-CN;q=0.4,zh;q=0.3,lo;q=0.2",
-      "Referer": "https://www.google.com/",
-      "Upgrade-Insecure-Requests": "1",
-      "Priority": "u=0, i",
-      "Sec-Ch-UA-Mobile": "?0",
-      "Sec-Fetch-Dest": "document",
-      "Sec-Fetch-Mode": "navigate",
-      "Sec-Fetch-Site": "cross-site",
-      "Sec-Fetch-User": "?1"
+    const gwUrl = "https://gw.vnexpress.net/cr/?name=tygia_vangv202206";
+    const gwHeaders = {
+      "accept": "*/*",
+      "accept-language": "vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5,zh-CN;q=0.4,zh;q=0.3,lo;q=0.2",
+      "origin": "https://vnexpress.net",
+      "priority": "u=1, i",
+      "referer": "https://vnexpress.net/",
+      "sec-ch-ua": '"Google Chrome";v="149", "Chromium";v="149", "Not)A;Brand";v="24"',
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": '"Windows"',
+      "sec-fetch-dest": "empty",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-site": "same-site",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
     };
 
-    console.log("[CRAWLER STEP 2] Launching HTTP request with user's customized headers...");
-    const response = await fetch(VNEXPRESS_GIA_VANG_TOPIC, { headers });
-    
-    console.log(`[CRAWLER STEP 2] HTTP RESPONSE STATUS: ${response.status} ${response.statusText}`);
-    
-    if (!response.ok) {
-      throw new Error(`Server returned error code ${response.status}`);
+    console.log(`[CRAWLER STEP 2] Fetching live rates from standard VnExpress API: ${gwUrl}`);
+    const gwResponse = await fetch(gwUrl, { headers: gwHeaders });
+    if (!gwResponse.ok) {
+       throw new Error(`gw.vnexpress.net returned status ${gwResponse.status}`);
     }
 
-    const html = await response.text();
-    console.log(`[CRAWLER STEP 2] HTTP BODY RECEIVED: Successfully loaded ${html.length} characters of HTML content.`);
+    const gwJson = await gwResponse.json() as any;
+    const chartData = gwJson.data?.data?.chart;
+    if (chartData) {
+       console.log("[CRAWLER STEP 3] Successfully parsed chart data from gw.vnexpress.net");
+       
+       // Handle ha_noi_pnj
+       const haNoiPnj = chartData.ha_noi_pnj;
+       if (haNoiPnj && haNoiPnj[0]) {
+          const latest = haNoiPnj[0];
+          const val1 = parseFloat(latest.buy) / 1000;
+          const val2 = parseFloat(latest.sell) / 1000;
+          const sellPrice = Math.max(val1, val2);
+          const buyPrice = Math.min(val1, val2);
 
-    console.log("[CRAWLER STEP 3] Starting parser for title-news blocks...");
-    
-    let pos = 0;
-    let matchCount = 0;
+          // PNJ
+          calculatedPrices.pnj.sell = parseFloat(sellPrice.toFixed(2));
+          calculatedPrices.pnj.buy = parseFloat(buyPrice.toFixed(2));
+          calculatedPrices.pnj.history = haNoiPnj.slice(0, 7).map((item: any) => Math.max(parseFloat(item.buy), parseFloat(item.sell)) / 1000).reverse();
 
-    while (true) {
-      const h3Start = html.indexOf('<h3 class="title-news">', pos);
-      if (h3Start === -1) break;
-      
-      const h3End = html.indexOf('</h3>', h3Start);
-      if (h3End === -1) break;
+          // DOJI (representing Nhẫn Tròn Kim Gia Bảo 24K) - mapped to ha_noi_pnj
+          calculatedPrices.doji.sell = parseFloat(sellPrice.toFixed(2));
+          calculatedPrices.doji.buy = parseFloat(buyPrice.toFixed(2));
+          calculatedPrices.doji.history = calculatedPrices.pnj.history;
 
-      const h3Content = html.slice(h3Start, h3End);
-      const anchorMatch = h3Content.match(/<a[^>]*href="([^"]+)"[^>]*title="([^"]+)"[^>]*>/i) ||
-                          h3Content.match(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]+?)<\/a>/i);
-
-      if (anchorMatch) {
-         const link = anchorMatch[1].trim();
-         const title = anchorMatch[2] ? anchorMatch[2].trim() : anchorMatch[3].replace(/<[^>]*>/g, "").trim();
-
-         // Look backward around 1200 characters for a thumbnail image
-         const prevSegment = html.slice(Math.max(0, h3Start - 1200), h3Start);
-         const imgMatch = prevSegment.match(/data-src="([^"]+)"/i) || 
-                          prevSegment.match(/src="([^"]+)"/i);
-         const image = imgMatch ? imgMatch[1] : "https://images.unsplash.com/photo-1610375228911-c4abbdd27355?w=500&h=300&fit=crop";
-
-         // Look forward around 1200 characters for description
-         const nextSegment = html.slice(h3End + 5, h3End + 1200);
-         const descMatch = nextSegment.match(/<p class="description">([\s\S]+?)<\/p>/i) ||
-                           nextSegment.match(/<p class="lead">([\s\S]+?)<\/p>/i);
-         const description = descMatch ? descMatch[1].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim() : "";
-
-         // Find publish time if available
-         const timeMatch = prevSegment.match(/<span class="time-public">([\s\S]+?)<\/span>/i) ||
-                           nextSegment.match(/<span class="time-public">([\s\S]+?)<\/span>/i);
-         let time = "Hôm nay";
-         if (timeMatch) {
-           time = timeMatch[1].replace(/<[^>]*>/g, "").trim();
-         }
-
-         // Analyze sentiment based on titles keywords
-         let sentiment: "positive" | "negative" | "neutral" = "neutral";
-         const lowerTitle = title.toLowerCase();
-         if (lowerTitle.includes("tăng") || lowerTitle.includes("vọt") || lowerTitle.includes("đỉnh")) {
-           sentiment = "positive";
-         } else if (lowerTitle.includes("giảm") || lowerTitle.includes("lao dốc") || lowerTitle.includes("lỗ")) {
-           sentiment = "negative";
-         }
-
-         extractedNews.push({
-           id: `vne-${matchCount++}`,
-           title,
-           link,
-           image,
-           description,
-           time,
-           source: "VnExpress",
-           sentiment
-         });
-
-         console.log(`[CRAWLER STEP 3] Extracted article successfully: "${title}" | URL: ${link}`);
-      }
-
-      pos = h3End + 5;
-    }
-
-    console.log(`[CRAWLER STEP 3] Parse complete. Total news extracted: ${extractedNews.length} articles.`);
-
-    if (extractedNews.length > 0) {
-      console.log("[CRAWLER STEP 4] Attempting dynamic SJC gold price calibration from parsed news articles...");
-      let calibratedSjcSell: number | null = null;
-
-      // Look in parsed titles first for numbers associated with "triệu"
-      for (const art of extractedNews) {
-        const regex = /(\d+\.?\d*)\s*triệu/gi;
-        let match;
-        while ((match = regex.exec(art.title)) !== null) {
-          const num = parseFloat(match[1]);
-          if (num >= 80 && num <= 220) {
-            calibratedSjcSell = num;
-            console.log(`[CRAWLER STEP 4] Dynamic Calibration MATCH (Title): Found ${num}M in article: "${art.title}"`);
-            break;
+          if (haNoiPnj[1]) {
+             const yesterdaySell = Math.max(parseFloat(haNoiPnj[1].buy), parseFloat(haNoiPnj[1].sell)) / 1000;
+             calculatedPrices.pnj.yesterdayChange = parseFloat((sellPrice - yesterdaySell).toFixed(2));
+             calculatedPrices.doji.yesterdayChange = calculatedPrices.pnj.yesterdayChange;
           }
-        }
-        if (calibratedSjcSell) break;
-      }
+          console.log(`[CRAWLER STEP 3.1] Calibrated PNJ & Kim Gia Bảo list from ha_noi_pnj: Buy ${buyPrice}M / Sell ${sellPrice}M`);
+       }
 
-      // If not found in titles, seek inside descriptions (lead content)
-      if (!calibratedSjcSell) {
-        for (const art of extractedNews) {
-          const regex = /(\d+\.?\d*)\s*triệu/gi;
-          let match;
-          while ((match = regex.exec(art.description || "")) !== null) {
-            const num = parseFloat(match[1]);
-            if (num >= 80 && num <= 220) {
-              calibratedSjcSell = num;
-              console.log(`[CRAWLER STEP 4] Dynamic Calibration MATCH (Description): Found ${num}M in guide: "${art.description}"`);
-              break;
-            }
+       // Handle ha_noi_sjc or sjc_1l_10l
+       const sjcData = chartData.ha_noi_sjc || chartData.sjc_1l_10l;
+       if (sjcData && sjcData[0]) {
+          const sLatest = sjcData[0];
+          const sVal1 = parseFloat(sLatest.buy) / 1000;
+          const sVal2 = parseFloat(sLatest.sell) / 1000;
+          const sSell = Math.max(sVal1, sVal2);
+          const sBuy = Math.min(sVal1, sVal2);
+
+          calculatedPrices.sjc.sell = parseFloat(sSell.toFixed(2));
+          calculatedPrices.sjc.buy = parseFloat(sBuy.toFixed(2));
+          calculatedPrices.sjc.history = sjcData.slice(0, 7).map((item: any) => Math.max(parseFloat(item.buy), parseFloat(item.sell)) / 1000).reverse();
+
+          if (sjcData[1]) {
+             const sYesterdaySell = Math.max(parseFloat(sjcData[1].buy), parseFloat(sjcData[1].sell)) / 1000;
+             calculatedPrices.sjc.yesterdayChange = parseFloat((sSell - sYesterdaySell).toFixed(2));
           }
-          if (calibratedSjcSell) break;
-        }
-      }
-
-      // If calibrated successfully, update SJC, DOJI (Kim Gia Bảo ring) and PNJ
-      if (calibratedSjcSell) {
-        console.log(`[CRAWLER STEP 4] CALIBRATING prices around SJC sell base of ${calibratedSjcSell} Million VND...`);
-        
-        calculatedPrices.sjc.sell = parseFloat(calibratedSjcSell.toFixed(2));
-        calculatedPrices.sjc.buy = parseFloat((calibratedSjcSell - 2.0).toFixed(2));
-        calculatedPrices.sjc.history = [
-          calibratedSjcSell - 7.5,
-          calibratedSjcSell - 6.8,
-          calibratedSjcSell - 6.2,
-          calibratedSjcSell - 6.0,
-          calibratedSjcSell - 6.5,
-          calibratedSjcSell - 5.8,
-          calibratedSjcSell
-        ];
-
-        const kgbSell = parseFloat((calibratedSjcSell * 0.88).toFixed(2));
-        calculatedPrices.doji.sell = kgbSell;
-        calculatedPrices.doji.buy = parseFloat((kgbSell - 1.2).toFixed(2));
-        calculatedPrices.doji.history = [
-          kgbSell - 6.5,
-          kgbSell - 5.8,
-          kgbSell - 5.4,
-          kgbSell - 5.1,
-          kgbSell - 5.6,
-          kgbSell - 5.0,
-          kgbSell
-        ];
-
-        const pnjSell = parseFloat((calibratedSjcSell * 0.86).toFixed(2));
-        calculatedPrices.pnj.sell = pnjSell;
-        calculatedPrices.pnj.buy = parseFloat((pnjSell - 1.2).toFixed(2));
-        calculatedPrices.pnj.history = [
-          pnjSell - 6.3,
-          pnjSell - 5.6,
-          pnjSell - 5.2,
-          pnjSell - 4.9,
-          pnjSell - 5.4,
-          pnjSell - 4.8,
-          pnjSell
-        ];
-      } else {
-        console.log("[CRAWLER STEP 4] Calibration: No gold-related rate found in news titles or descriptions. Keeping robust baseline June 2026 rates.");
-      }
+          console.log(`[CRAWLER STEP 3.2] Calibrated SJC Toàn Quốc: Buy ${sBuy}M / Sell ${sSell}M`);
+       }
     }
   } catch (err: any) {
-    console.error(`[CRAWLER EXCEPTION] Failed to crawl live VnExpress data: ${err.message}. Defaulting to safe, offline calibrated prices.`);
+    console.error(`[CRAWLER EXCEPTION] Failed to crawl live rate from gw.vnexpress.net: ${err.message}.`);
+  }
+
+  // 2. Fetch live news articles from VnExpress portal page
+  try {
+    const newsHeaders = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+    };
+
+    console.log(`[CRAWLER STEP 4] Fetching news content from: ${VNEXPRESS_GIA_VANG_TOPIC}`);
+    const response = await fetch(VNEXPRESS_GIA_VANG_TOPIC, { headers: newsHeaders });
+    if (response.ok) {
+      const html = await response.text();
+      let pos = 0;
+      let matchCount = 0;
+
+      while (true) {
+        const h3Start = html.indexOf('<h3 class="title-news">', pos);
+        if (h3Start === -1) break;
+        
+        const h3End = html.indexOf('</h3>', h3Start);
+        if (h3End === -1) break;
+
+        const h3Content = html.slice(h3Start, h3End);
+        const anchorMatch = h3Content.match(/<a[^>]*href="([^"]+)"[^>]*title="([^"]+)"[^>]*>/i) ||
+                            h3Content.match(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]+?)<\/a>/i);
+
+        if (anchorMatch) {
+           const link = anchorMatch[1].trim();
+           const title = anchorMatch[2] ? anchorMatch[2].trim() : anchorMatch[3].replace(/<[^>]*>/g, "").trim();
+
+           const prevSegment = html.slice(Math.max(0, h3Start - 1200), h3Start);
+           const imgMatch = prevSegment.match(/data-src="([^"]+)"/i) || 
+                            prevSegment.match(/src="([^"]+)"/i);
+           const image = imgMatch ? imgMatch[1] : "https://images.unsplash.com/photo-1610375228911-c4abbdd27355?w=500&h=300&fit=crop";
+
+           const nextSegment = html.slice(h3End + 5, h3End + 1200);
+           const descMatch = nextSegment.match(/<p class="description">([\s\S]+?)<\/p>/i) ||
+                             nextSegment.match(/<p class="lead">([\s\S]+?)<\/p>/i);
+           const description = descMatch ? descMatch[1].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim() : "";
+
+           const timeMatch = prevSegment.match(/<span class="time-public">([\s\S]+?)<\/span>/i) ||
+                             nextSegment.match(/<span class="time-public">([\s\S]+?)<\/span>/i);
+           let time = "Hôm nay";
+           if (timeMatch) {
+             time = timeMatch[1].replace(/<[^>]*>/g, "").trim();
+           }
+
+           let sentiment: "positive" | "negative" | "neutral" = "neutral";
+           const lowerTitle = title.toLowerCase();
+           if (lowerTitle.includes("tăng") || lowerTitle.includes("vọt") || lowerTitle.includes("đỉnh")) {
+             sentiment = "positive";
+           } else if (lowerTitle.includes("giảm") || lowerTitle.includes("lao dốc") || lowerTitle.includes("lỗ")) {
+             sentiment = "negative";
+           }
+
+           extractedNews.push({
+             id: `vne-${matchCount++}`,
+             title,
+             link,
+             image,
+             description,
+             time,
+             source: "VnExpress",
+             sentiment
+           });
+        }
+        pos = h3End + 5;
+      }
+      console.log(`[CRAWLER STEP 5] Extracted ${extractedNews.length} articles from VnExpress portal`);
+    }
+  } catch (err: any) {
+    console.error(`[CRAWLER EXCEPTION] Failed to crawl live VnExpress data: ${err.message}.`);
   }
 
   // Double-check: the user specifically specified "tôi chỉ dùng sản phẩm Nhẫn tròn ép vỉ Kim Gia Bảo 24K - 1 chỉ"
