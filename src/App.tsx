@@ -103,6 +103,7 @@ export default function App() {
   const [news, setNews] = useState<GoldNews[]>(DEFAULT_NEWS);
   const [crawledProducts, setCrawledProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
   const [isTestCrawling, setIsTestCrawling] = useState<boolean>(false);
   const [showManager, setShowManager] = useState<boolean>(false);
   const [selectedNews, setSelectedNews] = useState<GoldNews | null>(null);
@@ -321,6 +322,7 @@ export default function App() {
       setToasts((prev) => [...prev, errorToast]);
     } finally {
       setIsLoading(false);
+      setIsFirstLoad(false);
     }
   };
 
@@ -566,30 +568,47 @@ export default function App() {
             
             {/* The absolute main highlight of the screen */}
             <div className={`text-3xl font-black font-mono tracking-tight my-1.5 flex items-center justify-center gap-1 ${
-              assetsChangeToday > 0 
-                ? "text-emerald-600 animate-pulse" 
-                : assetsChangeToday < 0 
-                  ? "text-rose-600" 
-                  : "text-stone-500"
+              isFirstLoad
+                ? "text-amber-500 animate-pulse"
+                : assetsChangeToday > 0 
+                  ? "text-emerald-600 animate-pulse" 
+                  : assetsChangeToday < 0 
+                    ? "text-rose-600" 
+                    : "text-stone-500"
             }`}>
-              <span>{assetsChangeToday > 0 ? "▲" : assetsChangeToday < 0 ? "▼" : "●"}</span>
-              <span>
-                {assetsChangeToday !== 0 ? (
-                  `${assetsChangeToday > 0 ? "+" : "-"}${Math.abs(Math.round(assetsChangeToday * 1000000)).toLocaleString("vi-VN")} đ`
-                ) : (
-                  "0 đ"
-                )}
-              </span>
+              {isFirstLoad ? (
+                <span>...</span>
+              ) : (
+                <>
+                  <span>{assetsChangeToday > 0 ? "▲" : assetsChangeToday < 0 ? "▼" : "●"}</span>
+                  <span>
+                    {assetsChangeToday !== 0 ? (
+                      `${assetsChangeToday > 0 ? "+" : "-"}${Math.abs(Math.round(assetsChangeToday * 1000000)).toLocaleString("vi-VN")} đ`
+                    ) : (
+                      "0 đ"
+                    )}
+                  </span>
+                </>
+              )}
             </div>
 
             <span className={`text-[10px] font-extrabold px-3 py-0.5 rounded-full ${
-              assetsChangeToday > 0 
-                ? "bg-emerald-50 text-emerald-700" 
-                : assetsChangeToday < 0 
-                  ? "bg-rose-50 text-rose-700" 
-                  : "bg-stone-50 text-stone-600"
+              isFirstLoad
+                ? "bg-amber-50 text-amber-700"
+                : assetsChangeToday > 0 
+                  ? "bg-emerald-50 text-emerald-700" 
+                  : assetsChangeToday < 0 
+                    ? "bg-rose-50 text-rose-700" 
+                    : "bg-stone-50 text-stone-600"
             }`}>
-              {assetsChangeToday > 0 ? "Hôm nay két sinh lời! 🐟✨" : assetsChangeToday < 0 ? "Tiếp tục tích lũy nhen! 💪" : "Hôm nay thị trường đứng yên 🐾"}
+              {isFirstLoad 
+                ? "Đang đồng bộ giá vàng..." 
+                : assetsChangeToday > 0 
+                  ? "Hôm nay két sinh lời! 🐟✨" 
+                  : assetsChangeToday < 0 
+                    ? "Tiếp tục tích lũy nhen! 💪" 
+                    : "Hôm nay thị trường đứng yên 🐾"
+              }
             </span>
           </div>
 
@@ -600,19 +619,29 @@ export default function App() {
             <div className="bg-[#FAF9F5]/80 rounded-2xl p-3 border border-stone-100/50">
               <span className="text-[9px] uppercase tracking-wider text-stone-400 font-bold block mb-0.5">Hũ Vàng 24K</span>
               <div className="flex items-baseline gap-0.5 text-stone-800">
-                <span className="text-lg font-black font-mono tracking-tight">
-                  {portfolioSummary.currentValue.toFixed(2)}
-                </span>
-                <span className="text-[10px] font-bold">Trđ</span>
+                {isFirstLoad ? (
+                  <span className="text-sm font-bold text-amber-600/80 animate-pulse">...</span>
+                ) : (
+                  <>
+                    <span className="text-lg font-black font-mono tracking-tight">
+                      {portfolioSummary.currentValue.toFixed(2)}
+                    </span>
+                    <span className="text-[10px] font-bold">Trđ</span>
+                  </>
+                )}
               </div>
               <span className="text-[9px] font-bold text-amber-800/80 mt-0.5 block">
-                Sở hữu: <strong className="font-mono text-amber-900">{portfolioSummary.totalQuantity.toFixed(1)} chỉ</strong>
+                Sở hữu: <strong className="font-mono text-amber-900">
+                  {isFirstLoad ? "..." : `${portfolioSummary.totalQuantity.toFixed(1)} chỉ`}
+                </strong>
               </span>
             </div>
 
             <div className="bg-[#FAF9F5]/80 rounded-2xl p-3 border border-stone-100/50">
               <span className="text-[9px] uppercase tracking-wider text-stone-400 font-bold block mb-0.5">Tổng lãi/lỗ lũy kế</span>
-              {portfolioSummary.totalTransactions === 0 ? (
+              {isFirstLoad ? (
+                <div className="text-amber-600/80 font-bold text-xs pt-1 animate-pulse">...</div>
+              ) : portfolioSummary.totalTransactions === 0 ? (
                 <div className="text-stone-400 font-bold text-xs pt-1">Chưa có giao dịch</div>
               ) : (
                 <>
@@ -637,6 +666,7 @@ export default function App() {
             portfolio={portfolioSummary} 
             todayChange={assetsChangeToday} 
             onPoke={() => {}} 
+            isFirstLoad={isFirstLoad}
           />
         </section>
 
@@ -725,7 +755,7 @@ export default function App() {
             <div className="mt-3 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="border border-stone-200/50 rounded-3xl p-4 bg-white/80 shadow-2xs">
                 <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-3">📝 Nhập giao dịch mới</h3>
-                <VaultForm prices={prices} onAddTransaction={handleAddTransaction} />
+                <VaultForm prices={prices} onAddTransaction={handleAddTransaction} isFirstLoad={isFirstLoad} />
               </div>
               
               <div className="border border-stone-200/50 rounded-3xl p-4 bg-white shadow-2xs">
@@ -734,6 +764,7 @@ export default function App() {
                   transactions={transactions} 
                   prices={prices} 
                   onDeleteTransaction={handleDeleteTransaction} 
+                  isFirstLoad={isFirstLoad}
                 />
               </div>
             </div>

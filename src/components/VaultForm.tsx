@@ -5,9 +5,10 @@ import { GoldTypeCode, GoldPriceMap, GoldTransaction } from "../types";
 interface VaultFormProps {
   prices: GoldPriceMap;
   onAddTransaction: (transaction: Omit<GoldTransaction, "id">) => void;
+  isFirstLoad?: boolean;
 }
 
-export default function VaultForm({ prices, onAddTransaction }: VaultFormProps) {
+export default function VaultForm({ prices, onAddTransaction, isFirstLoad }: VaultFormProps) {
   const [type, setType] = useState<GoldTypeCode>("doji");
   const [unit, setUnit] = useState<"chi" | "luong">("chi");
   const [quantity, setQuantity] = useState<string>("");
@@ -179,10 +180,20 @@ export default function VaultForm({ prices, onAddTransaction }: VaultFormProps) 
         {/* Submit button */}
         <button
           type="submit"
-          className="w-full py-3 bg-amber-400 hover:bg-amber-500 font-bold text-amber-950 text-sm rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none"
+          disabled={isFirstLoad}
+          className="w-full py-3 bg-amber-400 hover:bg-amber-500 font-bold text-amber-950 text-sm rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
         >
-          <Plus size={16} strokeWidth={3} />
-          <span>Xác Nhận Đút Két Vàng 💰</span>
+          {isFirstLoad ? (
+            <>
+              <span className="animate-spin">⚙️</span>
+              <span>Đang lấy giá thị trường...</span>
+            </>
+          ) : (
+            <>
+              <Plus size={16} strokeWidth={3} />
+              <span>Xác Nhận Đút Két Vàng 💰</span>
+            </>
+          )}
         </button>
       </form>
     </div>

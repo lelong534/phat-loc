@@ -15,6 +15,7 @@ interface GoldCatProps {
   portfolio: GoldPortfolioSummary;
   todayChange: number; // Tổng tăng giảm tài sản hôm nay (triệu VNĐ)
   onPoke: () => void;
+  isFirstLoad?: boolean;
 }
 
 const FUN_QUOTES = [
@@ -27,7 +28,7 @@ const FUN_QUOTES = [
   "Ủa sen? Hôm nay đã nựng Trẫm chưa mà đòi vàng tăng giá à? Nựng lẹ đi meow! 🐾💤"
 ];
 
-export default function GoldCat({ portfolio, todayChange, onPoke }: GoldCatProps) {
+export default function GoldCat({ portfolio, todayChange, onPoke, isFirstLoad }: GoldCatProps) {
   const [quote, setQuote] = useState<string>("");
   const [pokedCount, setPokedCount] = useState<number>(0);
   const [showHeart, setShowHeart] = useState<boolean>(false);
@@ -40,7 +41,10 @@ export default function GoldCat({ portfolio, todayChange, onPoke }: GoldCatProps
   let currentAvatar = catIdle;
   let defaultQuote = "Xin chào Sen béo! Trẫm là Mèo Vàng Tài Lộc đây meow. Cho Trẫm ăn pate tôm rồi Trẫm canh hũ vàng cho nha! 🐱💰";
 
-  if (hasTransactions) {
+  if (isFirstLoad) {
+    currentAvatar = catIdle;
+    defaultQuote = "Mèo béo đang kiểm kho và cập nhật giá vàng trực tuyến từ VnExpress nhe meow... Sen đợi Trẫm chút xíu nha! 🐱🐾💎";
+  } else if (hasTransactions) {
     if (profit > 0) {
       currentAvatar = catHappy;
       defaultQuote = `Sướng nhen Sen ơi! Sổ vàng của cậu đang sinh lời ngọt ngào kìa! Tổng lãi đã tăng **+${profit.toFixed(2)} triệu VNĐ** (+${portfolio.profitPercentage.toFixed(1)}%) gòi nha! Thưởng pate cua hoàng đế cho Trẫm lẹ meow meow! 🐈👑✨`;
@@ -59,7 +63,7 @@ export default function GoldCat({ portfolio, todayChange, onPoke }: GoldCatProps
   // Set initial quote or update when portfolio changes
   useEffect(() => {
     setQuote(defaultQuote);
-  }, [portfolio.totalProfit, hasTransactions]);
+  }, [portfolio.totalProfit, hasTransactions, isFirstLoad]);
 
   const handlePoke = (e: React.MouseEvent<HTMLDivElement>) => {
     setPokedCount((prev) => prev + 1);

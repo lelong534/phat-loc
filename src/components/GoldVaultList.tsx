@@ -6,12 +6,14 @@ interface GoldVaultListProps {
   transactions: GoldTransaction[];
   prices: GoldPriceMap;
   onDeleteTransaction: (id: string) => void;
+  isFirstLoad?: boolean;
 }
 
 export default function GoldVaultList({
   transactions,
   prices,
-  onDeleteTransaction
+  onDeleteTransaction,
+  isFirstLoad
 }: GoldVaultListProps) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   
@@ -127,7 +129,7 @@ export default function GoldVaultList({
                 <div>
                   <span className="opacity-75">Giá bán hôm nay:</span>
                   <span className="block font-mono font-bold text-slate-700 mt-0.5">
-                    {currentPricePerUnit.toFixed(2)} Tr.đ/{tx.unit}
+                    {isFirstLoad ? "..." : `${currentPricePerUnit.toFixed(2)} Tr.đ/${tx.unit}`}
                   </span>
                 </div>
 
@@ -141,25 +143,31 @@ export default function GoldVaultList({
                 <div>
                   <span className="opacity-75">Giá trị hiện tại:</span>
                   <span className="block font-mono font-bold text-slate-800 mt-0.5">
-                    {currentValue.toFixed(2)} triệu đ
+                    {isFirstLoad ? "..." : `${currentValue.toFixed(2)} triệu đ`}
                   </span>
                 </div>
               </div>
 
               {/* Profit Indicator Bar */}
               <div className={`mt-1 py-1.5 px-2.5 rounded-xl flex items-center justify-between text-xs font-semibold ${
-                isProfit 
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-100/30" 
-                  : "bg-rose-50 text-rose-700 border border-rose-100/30"
+                isFirstLoad 
+                  ? "bg-amber-50 text-amber-700 border border-amber-100/30"
+                  : isProfit 
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-100/30" 
+                    : "bg-rose-50 text-rose-700 border border-rose-100/30"
               }`}>
                 <span className="flex items-center gap-1">
-                  {isProfit ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                  <span>{isProfit ? "Lợi nhuận tạm tính:" : "Tạm lỗ:"}</span>
+                  {isFirstLoad ? <span className="animate-spin text-[10px]">⚙️</span> : isProfit ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                  <span>{isFirstLoad ? "Đang tính toán..." : isProfit ? "Lợi nhuận tạm tính:" : "Tạm lỗ:"}</span>
                 </span>
                 <span className="font-mono font-bold text-right">
-                  {isProfit ? "+" : ""}
-                  {profit.toFixed(2)} triệu đ ({isProfit ? "+" : ""}
-                  {profitPercent.toFixed(1)}%)
+                  {isFirstLoad ? "..." : (
+                    <>
+                      {isProfit ? "+" : ""}
+                      {profit.toFixed(2)} triệu đ ({isProfit ? "+" : ""}
+                      {profitPercent.toFixed(1)}%)
+                    </>
+                  )}
                 </span>
               </div>
             </div>
